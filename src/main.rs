@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
 };
-use block::blockregistry::{self, BlockRegistry};
+use block::blockregistry::{BlockRegistry};
 use block::chunk::Chunk;
 use block::mesh::bake;
 mod debugtext;
@@ -40,12 +40,12 @@ fn setup(
         base_color_texture: Some(images.add(uv_debug_texture())),
         ..default()
     });
-
-    let shape = meshes.add(shape::Torus::default().into());
+    
+    let test_torus = meshes.add(shape::Torus::default().into());
 
     commands
         .spawn((PbrBundle {
-            mesh: shape,
+            mesh: test_torus,
             material: debug_material.clone(),
             ..default()
         },))
@@ -70,7 +70,7 @@ fn setup(
             material: materials.add(Color::SILVER.into()),
             ..default()
         })
-        .insert(WorldPosition::default());
+        .insert(WorldPosition::from_xyz(0.0, -100.0, 0.0));
 
     // test chunk
 
