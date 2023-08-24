@@ -45,7 +45,7 @@ impl MergeVoxel for MeshVoxel {
     }
 }
 
-const CHUNK_MESH_SIZE: u32 = 32;
+const CHUNK_MESH_SIZE: u32 = 32 + 2;
 type ChunkMeshShape = ConstShape3u32<CHUNK_MESH_SIZE, CHUNK_MESH_SIZE, CHUNK_MESH_SIZE>;
 
 pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
@@ -53,7 +53,11 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
 
     for i in 0..ChunkMeshShape::SIZE {
         let [x, y, z] = ChunkMeshShape::delinearize(i);
-        let block_id = chunk.get(x, y, z);
+        if x == 0 || y == 0 || z == 0 || 
+           x == CHUNK_MESH_SIZE - 1 || y == CHUNK_MESH_SIZE - 1 || z == CHUNK_MESH_SIZE - 1 {
+            continue;
+        }
+        let block_id = chunk.get(x-1, y-1, z-1);
         let block = registry.block_from_id(block_id);
         voxels[i as usize] = MeshVoxel {
             id: block_id,
@@ -89,7 +93,8 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
     {
         for quad in group.iter() {
             indices.extend_from_slice(&face.quad_mesh_indices(positions.len() as u32));
-            positions.extend_from_slice(&face.quad_mesh_positions(quad, scale));
+            positions.extend_from_slice(&face.quad_mesh_positions(quad, scale)
+                                             .map(|q| q.map(|x| x - 1.0)));
             normals.extend_from_slice(&face.quad_mesh_normals());
             // data.extend_from_slice(
             //    &[(block_face_normal_index as u32) << 8u32
@@ -117,7 +122,7 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
     //    VertexAttributeValues::Uint32(data),
     // );
 
-    mesh.set_indices(Some(Indices::U32(indices.clone())));
+    mesh.set_indices(Some(Indices::U32(indices)));
 
     return mesh;
 }

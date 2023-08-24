@@ -41,16 +41,6 @@ fn setup(
         ..default()
     });
 
-    let shape = meshes.add(shape::Torus::default().into());
-
-    commands
-        .spawn((PbrBundle {
-            mesh: shape,
-            material: debug_material.clone(),
-            ..default()
-        },))
-        .insert(WorldPosition::from_xyz(0.0, 2.0, 0.0));
-
     commands
         .spawn(PointLightBundle {
             point_light: PointLight {
@@ -70,7 +60,7 @@ fn setup(
             material: materials.add(Color::SILVER.into()),
             ..default()
         })
-        .insert(WorldPosition::default());
+        .insert(WorldPosition::from_xyz(0.0, -100.0, 0.0));
 
     // test chunk
 
