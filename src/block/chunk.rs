@@ -20,10 +20,6 @@ impl Chunk {
         };
     }
 
-    pub fn block_id_at(&self, x: i32, y: i32, z: i32) -> BlockId {
-        return self.blocks[x as usize][z as usize][y as usize];
-    }
-
     pub fn place(&mut self, block: BlockId, pos: (u32, u32, u32)) {
         let (x, y, z) = pos;
         self.blocks[x as usize][z as usize][y as usize] = block;

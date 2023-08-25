@@ -40,6 +40,7 @@ impl BlockRegistry {
         self.registered_blocks.push(block);
     }
 
+    #[allow(dead_code)]
     pub fn visibility_from_id(&self, id: BlockId) -> block_mesh::VoxelVisibility {
         let BlockId(n) = id;
         return self.registered_blocks[n as usize].mesh_visibility;

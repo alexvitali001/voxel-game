@@ -62,14 +62,14 @@ fn build_block_registry(
         name: String::from("stone"),
         mesh_visibility: VoxelVisibility::Opaque,
         material_type: BlockMaterial::Solid(
-            asset_server.load("textures/stone.png")
+            asset_server.load("textures/block/stone.png")
         ),
     });
     block_registry.register_block(materials, BasicBlock {
         name: String::from("dirt"),
         mesh_visibility: VoxelVisibility::Opaque,
         material_type: BlockMaterial::Solid(
-            asset_server.load("textures/dirt.png")
+            asset_server.load("textures/block/dirt.png")
         ),
     });
     block_registry
@@ -84,7 +84,7 @@ fn setup(
     mut ambient_light: ResMut<AmbientLight>,
 ) {
 
-    let debug_texture = asset_server.load("textures/stone.png");
+    let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {
         base_color_texture: Some(debug_texture),
         ..default()

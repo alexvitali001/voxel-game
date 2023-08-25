@@ -6,6 +6,7 @@ use bevy::asset::Handle;
 pub enum BlockMaterial {
     Empty,
     Solid(Handle<Image>),
+    #[allow(dead_code)]
     Fluid,
 }
 
