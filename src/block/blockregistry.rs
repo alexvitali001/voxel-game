@@ -26,12 +26,6 @@ impl BlockRegistry {
             mesh_visibility: VoxelVisibility::Opaque,
             material_type: BlockMaterial::Solid,
         });
-
-        registry.register_block(BasicBlock {
-            name: String::from("dirt"),
-            mesh_visibility: VoxelVisibility::Opaque,
-            material_type: BlockMaterial::Solid,
-        });
         return registry;
     }
 
@@ -40,6 +34,11 @@ impl BlockRegistry {
         self.name_map
             .insert(block.name.clone(), BlockId(new_block_id));
         self.registered_blocks.push(block);
+    }
+
+    pub fn visibility_from_id(&self, id: BlockId) -> block_mesh::VoxelVisibility {
+        let BlockId(n) = id;
+        return self.registered_blocks[n as usize].mesh_visibility;
     }
 
     pub fn id_from_name(&self, name: String) -> Option<BlockId> {
