@@ -20,10 +20,6 @@ impl Chunk {
         };
     }
 
-    pub fn block_id_at(&self, x: i32, y: i32, z: i32) -> BlockId {
-        return self.blocks[x as usize][z as usize][y as usize];
-    }
-
     pub fn place(&mut self, block: BlockId, pos: (u32, u32, u32)) {
         let (x, y, z) = pos;
         self.blocks[x as usize][z as usize][y as usize] = block;
@@ -43,6 +39,7 @@ impl Chunk {
         let mut chunk = Chunk::new();
 
         let stone = registry.id_from_name(String::from("stone")).unwrap();
+        let dirt = registry.id_from_name(String::from("dirt")).unwrap();
         for relative_x in 0..CHUNK_SIZE_I32 {
             for relative_z in 0..CHUNK_SIZE_I32 {
                 // get world coordinates of this column
@@ -65,10 +62,17 @@ impl Chunk {
                 }
 
                 for relative_y in 0..std::cmp::min(height - chunk_floor, CHUNK_SIZE_I32) {
-                    chunk.place(
-                        stone,
-                        (relative_x as u32, relative_y as u32, relative_z as u32),
-                    )
+                    if relative_y == height - chunk_floor {
+                        chunk.place(
+                            dirt,
+                            (relative_x as u32, relative_y as u32, relative_z as u32),
+                        )
+                    } else {
+                        chunk.place(
+                            stone,
+                            (relative_x as u32, relative_y as u32, relative_z as u32),
+                        )
+                    }
                 }
             }
         }
