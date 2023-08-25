@@ -1,7 +1,10 @@
 use block_mesh::VoxelVisibility;
+use bevy::render::texture::Image;
+use bevy::asset::Handle;
+
 pub enum BlockMaterial {
     Empty,
-    Solid,
+    Solid(Handle<Image>),
     Fluid,
 }
 

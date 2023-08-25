@@ -20,13 +20,7 @@ impl BlockRegistry {
             mesh_visibility: VoxelVisibility::Empty,
             material_type: BlockMaterial::Empty,
         });
-
-        registry.register_block(BasicBlock {
-            name: String::from("stone"),
-            mesh_visibility: VoxelVisibility::Opaque,
-            material_type: BlockMaterial::Solid,
-        });
-        return registry;
+        registry
     }
 
     pub fn register_block(&mut self, block: BasicBlock) {

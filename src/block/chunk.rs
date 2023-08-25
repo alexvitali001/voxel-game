@@ -43,6 +43,7 @@ impl Chunk {
         let mut chunk = Chunk::new();
 
         let stone = registry.id_from_name(String::from("stone")).unwrap();
+        let dirt = registry.id_from_name(String::from("dirt")).unwrap();
         for relative_x in 0..CHUNK_SIZE_I32 {
             for relative_z in 0..CHUNK_SIZE_I32 {
                 // get world coordinates of this column
@@ -63,12 +64,18 @@ impl Chunk {
                 if chunk_floor > height {
                     continue;
                 }
-
-                for relative_y in 0..std::cmp::min(height - chunk_floor, CHUNK_SIZE_I32) {
+                let top = std::cmp::min(height - chunk_floor, CHUNK_SIZE_I32);
+                for relative_y in 0..top-1 {
                     chunk.place(
                         stone,
                         (relative_x as u32, relative_y as u32, relative_z as u32),
-                    )
+                    );
+                }
+                if top > 0 {
+                    chunk.place(
+                        dirt,
+                        (relative_x as u32, (top-1) as u32, relative_z as u32),
+                    );
                 }
             }
         }

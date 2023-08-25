@@ -79,6 +79,7 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
     let mut indices = Vec::with_capacity(num_indices);
     let mut positions = Vec::with_capacity(num_vertices);
     let mut normals = Vec::with_capacity(num_vertices);
+    let mut uvs = Vec::with_capacity(num_vertices);
     // let mut data = Vec::with_capacity(num_vertices);
     let scale = 1.0;
 
@@ -96,12 +97,15 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
             positions.extend_from_slice(&face.quad_mesh_positions(quad, scale)
                                              .map(|q| q.map(|x| x - 1.0)));
             normals.extend_from_slice(&face.quad_mesh_normals());
-            // data.extend_from_slice(
-            //    &[(block_face_normal_index as u32) << 8u32
-            //        | buffer
-            //            .voxel_at(quad.minimum.map(|x| x - 1).into())
-            //            .as_mat_id() as u32; 4],
-            // );
+            let normal = &face.quad_mesh_normals()[0];
+            let [u,v] = [quad.width as f32, quad.height as f32];
+
+            let uv = if normal[2] - normal[0] + normal[1] > 0.0 {
+                [[0.0, v], [u, v], [0.0, 0.0], [u, 0.0]]
+            } else {
+                [[u, v], [0.0, v], [u, 0.0], [0.0, 0.0]]
+            };
+            uvs.extend_from_slice(&uv);
         }
     }
 
@@ -114,6 +118,11 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
     mesh.insert_attribute(
         Mesh::ATTRIBUTE_NORMAL,
         VertexAttributeValues::Float32x3(normals),
+    );
+    
+    mesh.insert_attribute(
+        Mesh::ATTRIBUTE_UV_0,
+        VertexAttributeValues::Float32x2(uvs),
     );
 
     //todo: in the future we might want to encode all the information onto a single uint32
