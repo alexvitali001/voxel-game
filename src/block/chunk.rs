@@ -61,7 +61,7 @@ impl Chunk {
                     continue;
                 }
                 let top = std::cmp::min(height - chunk_floor, CHUNK_SIZE_I32);
-                for relative_y in 0..top-1 {
+                for relative_y in 0..top - 1 {
                     chunk.place(
                         stone,
                         (relative_x as u32, relative_y as u32, relative_z as u32),
@@ -70,7 +70,7 @@ impl Chunk {
                 if top > 0 {
                     chunk.place(
                         dirt,
-                        (relative_x as u32, (top-1) as u32, relative_z as u32),
+                        (relative_x as u32, (top - 1) as u32, relative_z as u32),
                     );
                 }
             }

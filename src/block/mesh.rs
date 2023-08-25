@@ -55,7 +55,7 @@ impl PreMesh {
             Mesh::ATTRIBUTE_NORMAL,
             VertexAttributeValues::Float32x3(self.normals),
         );
-        
+
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_UV_0,
             VertexAttributeValues::Float32x2(self.uvs),
@@ -92,11 +92,16 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
 
     for i in 0..ChunkMeshShape::SIZE {
         let [x, y, z] = ChunkMeshShape::delinearize(i);
-        if x == 0 || y == 0 || z == 0 || 
-           x == CHUNK_MESH_SIZE - 1 || y == CHUNK_MESH_SIZE - 1 || z == CHUNK_MESH_SIZE - 1 {
+        if x == 0
+            || y == 0
+            || z == 0
+            || x == CHUNK_MESH_SIZE - 1
+            || y == CHUNK_MESH_SIZE - 1
+            || z == CHUNK_MESH_SIZE - 1
+        {
             continue;
         }
-        let block_id = chunk.get(x-1, y-1, z-1);
+        let block_id = chunk.get(x - 1, y - 1, z - 1);
         let block = registry.block_from_id(block_id);
         voxels[i as usize] = MeshVoxel {
             id: block_id,
@@ -136,17 +141,23 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
     {
         for quad in group.iter() {
             let min_xyz = quad.minimum;
-            let block_id = chunk.get(min_xyz[0]-1, min_xyz[1]-1, min_xyz[2]-1);
+            let block_id = chunk.get(min_xyz[0] - 1, min_xyz[1] - 1, min_xyz[2] - 1);
 
-            let premesh = premeshes.entry(block_id).or_insert_with(|| PreMesh::default());
+            let premesh = premeshes
+                .entry(block_id)
+                .or_insert_with(|| PreMesh::default());
 
-            premesh.indices.extend_from_slice(
-                &face.quad_mesh_indices(premesh.vertices.len() as u32));
-            premesh.vertices.extend_from_slice(&face.quad_mesh_positions(quad, scale)
-                                             .map(|q| q.map(|x| x - 1.0)));
+            premesh
+                .indices
+                .extend_from_slice(&face.quad_mesh_indices(premesh.vertices.len() as u32));
+            premesh.vertices.extend_from_slice(
+                &face
+                    .quad_mesh_positions(quad, scale)
+                    .map(|q| q.map(|x| x - 1.0)),
+            );
             premesh.normals.extend_from_slice(&face.quad_mesh_normals());
             let normal = &face.quad_mesh_normals()[0];
-            let [u,v] = [quad.width as f32, quad.height as f32];
+            let [u, v] = [quad.width as f32, quad.height as f32];
 
             let uv = if normal[2] - normal[0] + normal[1] > 0.0 {
                 [[0.0, v], [u, v], [0.0, 0.0], [u, 0.0]]
@@ -157,8 +168,8 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
         }
     }
 
-
-    return premeshes.into_iter()
-                    .map(|(k, value)| (k, value.construct()))
-                    .collect();
+    return premeshes
+        .into_iter()
+        .map(|(k, value)| (k, value.construct()))
+        .collect();
 }

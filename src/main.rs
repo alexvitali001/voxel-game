@@ -1,12 +1,13 @@
 use bevy::window::PrimaryWindow;
 use bevy::{
-    prelude::*,
-    render::render_resource::{Extent3d, TextureDimension, TextureFormat, SamplerDescriptor, 
-                            AddressMode::*, FilterMode::*},
     asset::Assets,
+    prelude::*,
+    render::render_resource::{
+        AddressMode::*, Extent3d, FilterMode::*, SamplerDescriptor, TextureDimension, TextureFormat,
+    },
 };
-use block::blockregistry::{BlockRegistry};
 use block::basicblock::BlockMaterial;
+use block::blockregistry::BlockRegistry;
 use block::chunk::Chunk;
 use block::mesh::bake;
 use block_mesh::VoxelVisibility;
@@ -14,13 +15,12 @@ mod debugtext;
 mod player;
 mod position;
 
+use crate::block::basicblock::BasicBlock;
 use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
-use crate::block::basicblock::BasicBlock;
 
 use position::*;
 mod block;
-
 
 fn main() {
     let image_plugin = ImagePlugin {
@@ -29,12 +29,14 @@ fn main() {
             address_mode_v: Repeat,
             mag_filter: Nearest,
             ..default()
-        }   
+        },
     };
     App::new()
         .add_plugins(DefaultPlugins.set(image_plugin))
         .add_plugins((PlayerPlugin, DebugTextPlugin))
-        .add_systems(Startup, (set_window_title, setup))
+        .insert_resource(BlockRegistry::new())
+        .add_systems(Startup, set_window_title)
+        .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(Update, translate_all_world_transforms)
         .run();
 }
@@ -47,32 +49,35 @@ fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
 }
 
 fn build_block_registry(
-    asset_server: &Res<AssetServer>,
-    materials: &mut ResMut<Assets<StandardMaterial>>
-) -> BlockRegistry {
-    let mut block_registry = BlockRegistry::new();
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut block_registry: ResMut<BlockRegistry>,
+) {
+    block_registry.register_block(
+        &mut materials,
+        BasicBlock {
+            name: String::from("air"),
+            mesh_visibility: VoxelVisibility::Empty,
+            material_type: BlockMaterial::Empty,
+        },
+    );
 
-    block_registry.register_block(materials, BasicBlock {
-        name: String::from("air"),
-        mesh_visibility: VoxelVisibility::Empty,
-        material_type: BlockMaterial::Empty,
-    });
-
-    block_registry.register_block(materials, BasicBlock {
-        name: String::from("stone"),
-        mesh_visibility: VoxelVisibility::Opaque,
-        material_type: BlockMaterial::Solid(
-            asset_server.load("textures/block/stone.png")
-        ),
-    });
-    block_registry.register_block(materials, BasicBlock {
-        name: String::from("dirt"),
-        mesh_visibility: VoxelVisibility::Opaque,
-        material_type: BlockMaterial::Solid(
-            asset_server.load("textures/block/dirt.png")
-        ),
-    });
-    block_registry
+    block_registry.register_block(
+        &mut materials,
+        BasicBlock {
+            name: String::from("stone"),
+            mesh_visibility: VoxelVisibility::Opaque,
+            material_type: BlockMaterial::Solid(asset_server.load("textures/block/stone.png")),
+        },
+    );
+    block_registry.register_block(
+        &mut materials,
+        BasicBlock {
+            name: String::from("dirt"),
+            mesh_visibility: VoxelVisibility::Opaque,
+            material_type: BlockMaterial::Solid(asset_server.load("textures/block/dirt.png")),
+        },
+    );
 }
 
 // summons test shit
@@ -82,14 +87,14 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ambient_light: ResMut<AmbientLight>,
+    block_registry: Res<BlockRegistry>,
 ) {
-
     let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {
         base_color_texture: Some(debug_texture),
         ..default()
     });
-    
+
     let test_torus = meshes.add(shape::Torus::default().into());
 
     commands
@@ -99,7 +104,7 @@ fn setup(
             ..default()
         },))
         .insert(WorldPosition::from_xyz(0.0, 2.0, 0.0));
-    
+
     ambient_light.color = Color::ALICE_BLUE;
     ambient_light.brightness = 0.4;
 
@@ -126,10 +131,6 @@ fn setup(
 
     // test chunk
 
-    println!("making block registry");
-    let block_registry = build_block_registry(&asset_server, &mut materials);
-
-
     println!("making chunks");
 
     for x in -10..=10 {
@@ -139,15 +140,17 @@ fn setup(
                 let chunk_meshes = bake(&block_registry, &chunk);
                 for (bid, mesh) in chunk_meshes {
                     if let Some(mat) = block_registry.material_from_id(&bid) {
-                        commands.spawn(PbrBundle {
-                            mesh: meshes.add(mesh),
-                            material: mat.clone(),
-                            ..default()
-                        }).insert(WorldPosition::from_xyz(
-                            (32 * x) as f64,
-                            (32 * y) as f64,
-                            (32 * z) as f64,
-                        ));
+                        commands
+                            .spawn(PbrBundle {
+                                mesh: meshes.add(mesh),
+                                material: mat.clone(),
+                                ..default()
+                            })
+                            .insert(WorldPosition::from_xyz(
+                                (32 * x) as f64,
+                                (32 * y) as f64,
+                                (32 * z) as f64,
+                            ));
                     }
                 }
             }
