@@ -1,38 +1,42 @@
 use crate::block::basicblock::BasicBlock;
-use crate::block::basicblock::BlockMaterial;
 use crate::block::chunk::BlockId;
-use block_mesh::VoxelVisibility;
 use std::collections::HashMap;
+use crate::BlockMaterial::*;
+
+use bevy::pbr::StandardMaterial;
+use bevy::utils::default;
+use bevy::prelude::*;
+
 pub struct BlockRegistry {
     registered_blocks: Vec<BasicBlock>,
     name_map: HashMap<String, BlockId>,
+    block_materials: HashMap<BlockId, Handle<StandardMaterial>>,
 }
 
 impl BlockRegistry {
     pub fn new() -> Self {
-        let mut registry = BlockRegistry {
+        BlockRegistry {
             registered_blocks: vec![],
             name_map: HashMap::new(),
-        };
-
-        registry.register_block(BasicBlock {
-            name: String::from("air"),
-            mesh_visibility: VoxelVisibility::Empty,
-            material_type: BlockMaterial::Empty,
-        });
-
-        registry.register_block(BasicBlock {
-            name: String::from("stone"),
-            mesh_visibility: VoxelVisibility::Opaque,
-            material_type: BlockMaterial::Solid,
-        });
-        return registry;
+            block_materials: HashMap::new(),
+        }
     }
 
-    pub fn register_block(&mut self, block: BasicBlock) {
+    pub fn register_block(&mut self, materials: &mut ResMut<Assets<StandardMaterial>>, block: BasicBlock) {
         let new_block_id = self.registered_blocks.len() as u32;
         self.name_map
             .insert(block.name.clone(), BlockId(new_block_id));
+
+        if let Solid(h_img) = block.material_type.clone() {
+            self.block_materials.insert(BlockId(new_block_id), materials.add(
+                StandardMaterial {
+                    perceptual_roughness: 0.95,
+                    base_color_texture: Some(h_img),
+                    ..default()
+                }
+            ));
+        }
+        
         self.registered_blocks.push(block);
     }
 
@@ -47,5 +51,9 @@ impl BlockRegistry {
     pub fn block_from_id(&self, id: BlockId) -> &BasicBlock {
         let BlockId(n) = id;
         return &self.registered_blocks[n as usize];
+    }
+    
+    pub fn material_from_id(&self, id: &BlockId) -> Option<&Handle<StandardMaterial>> {
+        self.block_materials.get(id)
     }
 }

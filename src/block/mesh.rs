@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::block::chunk::BlockId;
 use bevy::{
     prelude::Mesh,
@@ -33,6 +35,43 @@ impl Voxel for MeshVoxel {
     }
 }
 
+#[derive(Default)]
+struct PreMesh {
+    indices: Vec<u32>,
+    vertices: Vec<[f32; 3]>,
+    normals: Vec<[f32; 3]>,
+    uvs: Vec<[f32; 2]>,
+}
+
+impl PreMesh {
+    fn construct(self) -> Mesh {
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_POSITION,
+            VertexAttributeValues::Float32x3(self.vertices),
+        );
+
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_NORMAL,
+            VertexAttributeValues::Float32x3(self.normals),
+        );
+        
+        mesh.insert_attribute(
+            Mesh::ATTRIBUTE_UV_0,
+            VertexAttributeValues::Float32x2(self.uvs),
+        );
+
+        //todo: in the future we might want to encode all the information onto a single uint32
+        // mesh.insert_attribute(
+        //    VoxelTerrainMesh::ATTRIBUTE_DATA,
+        //    VertexAttributeValues::Uint32(data),
+        // );
+
+        mesh.set_indices(Some(Indices::U32(self.indices)));
+        return mesh;
+    }
+}
+
 impl MergeVoxel for MeshVoxel {
     type MergeValue = BlockId;
     fn merge_value(&self) -> Self::MergeValue {
@@ -48,7 +87,7 @@ impl MergeVoxel for MeshVoxel {
 const CHUNK_MESH_SIZE: u32 = 32 + 2;
 type ChunkMeshShape = ConstShape3u32<CHUNK_MESH_SIZE, CHUNK_MESH_SIZE, CHUNK_MESH_SIZE>;
 
-pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
+pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
     let mut voxels = [AIRVOXEL; ChunkMeshShape::SIZE as usize];
 
     for i in 0..ChunkMeshShape::SIZE {
@@ -74,16 +113,20 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
         &mut buffer,
     );
 
+    let mut premeshes = HashMap::new();
+    /*
     let num_indices = buffer.quads.num_quads() * 6;
     let num_vertices = buffer.quads.num_quads() * 4;
     let mut indices = Vec::with_capacity(num_indices);
     let mut positions = Vec::with_capacity(num_vertices);
     let mut normals = Vec::with_capacity(num_vertices);
+    let mut uvs = Vec::with_capacity(num_vertices);
+    */
     // let mut data = Vec::with_capacity(num_vertices);
     let scale = 1.0;
 
     //normal face index depends on the quad orientation config
-    for (block_face_normal_index, (group, face)) in buffer
+    for (_block_face_normal_index, (group, face)) in buffer
         .quads
         .groups
         .as_ref()
@@ -92,37 +135,30 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> Mesh {
         .enumerate()
     {
         for quad in group.iter() {
-            indices.extend_from_slice(&face.quad_mesh_indices(positions.len() as u32));
-            positions.extend_from_slice(&face.quad_mesh_positions(quad, scale)
+            let min_xyz = quad.minimum;
+            let block_id = chunk.get(min_xyz[0]-1, min_xyz[1]-1, min_xyz[2]-1);
+
+            let premesh = premeshes.entry(block_id).or_insert_with(|| PreMesh::default());
+
+            premesh.indices.extend_from_slice(
+                &face.quad_mesh_indices(premesh.vertices.len() as u32));
+            premesh.vertices.extend_from_slice(&face.quad_mesh_positions(quad, scale)
                                              .map(|q| q.map(|x| x - 1.0)));
-            normals.extend_from_slice(&face.quad_mesh_normals());
-            // data.extend_from_slice(
-            //    &[(block_face_normal_index as u32) << 8u32
-            //        | buffer
-            //            .voxel_at(quad.minimum.map(|x| x - 1).into())
-            //            .as_mat_id() as u32; 4],
-            // );
+            premesh.normals.extend_from_slice(&face.quad_mesh_normals());
+            let normal = &face.quad_mesh_normals()[0];
+            let [u,v] = [quad.width as f32, quad.height as f32];
+
+            let uv = if normal[2] - normal[0] + normal[1] > 0.0 {
+                [[0.0, v], [u, v], [0.0, 0.0], [u, 0.0]]
+            } else {
+                [[u, v], [0.0, v], [u, 0.0], [0.0, 0.0]]
+            };
+            premesh.uvs.extend_from_slice(&uv);
         }
     }
 
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_POSITION,
-        VertexAttributeValues::Float32x3(positions),
-    );
 
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_NORMAL,
-        VertexAttributeValues::Float32x3(normals),
-    );
-
-    //todo: in the future we might want to encode all the information onto a single uint32
-    // mesh.insert_attribute(
-    //    VoxelTerrainMesh::ATTRIBUTE_DATA,
-    //    VertexAttributeValues::Uint32(data),
-    // );
-
-    mesh.set_indices(Some(Indices::U32(indices)));
-
-    return mesh;
+    return premeshes.into_iter()
+                    .map(|(k, value)| (k, value.construct()))
+                    .collect();
 }
