@@ -47,17 +47,25 @@ fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
 }
 
 fn build_block_registry(
-    asset_server: &Res<AssetServer>
+    asset_server: &Res<AssetServer>,
+    materials: &mut ResMut<Assets<StandardMaterial>>
 ) -> BlockRegistry {
     let mut block_registry = BlockRegistry::new();
-    block_registry.register_block(BasicBlock {
+
+    block_registry.register_block(materials, BasicBlock {
+        name: String::from("air"),
+        mesh_visibility: VoxelVisibility::Empty,
+        material_type: BlockMaterial::Empty,
+    });
+
+    block_registry.register_block(materials, BasicBlock {
         name: String::from("stone"),
         mesh_visibility: VoxelVisibility::Opaque,
         material_type: BlockMaterial::Solid(
             asset_server.load("textures/stone.png")
         ),
     });
-    block_registry.register_block(BasicBlock {
+    block_registry.register_block(materials, BasicBlock {
         name: String::from("dirt"),
         mesh_visibility: VoxelVisibility::Opaque,
         material_type: BlockMaterial::Solid(
@@ -72,11 +80,10 @@ fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut ambient_light: ResMut<AmbientLight>,
 ) {
 
-    //let debug_texture = images.add(uv_debug_texture());
     let debug_texture = asset_server.load("textures/stone.png");
     let debug_material = materials.add(StandardMaterial {
         base_color_texture: Some(debug_texture),
@@ -92,18 +99,21 @@ fn setup(
             ..default()
         },))
         .insert(WorldPosition::from_xyz(0.0, 2.0, 0.0));
+    
+    ambient_light.color = Color::ALICE_BLUE;
+    ambient_light.brightness = 0.4;
 
     commands
         .spawn(PointLightBundle {
             point_light: PointLight {
                 intensity: 9000.0,
-                range: 100.,
+                range: 1000.,
                 shadows_enabled: true,
                 ..default()
             },
             ..default()
         })
-        .insert(WorldPosition::from_xyz(8.0, 16.0, 8.0));
+        .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
 
     // ground plane
     commands
@@ -117,7 +127,7 @@ fn setup(
     // test chunk
 
     println!("making block registry");
-    let block_registry = build_block_registry(&asset_server);
+    let block_registry = build_block_registry(&asset_server, &mut materials);
 
 
     println!("making chunks");
@@ -126,23 +136,26 @@ fn setup(
         for z in -10..=10 {
             for y in -1..=0 {
                 let chunk = Chunk::generate_chunk(&block_registry, x, y, z);
-                let mesh = bake(&block_registry, &chunk);
-                commands
-                    .spawn(PbrBundle {
-                        mesh: meshes.add(mesh),
-                        material: debug_material.clone(),
-                        ..default()
-                    })
-                    .insert(WorldPosition::from_xyz(
-                        (32 * x) as f64,
-                        (32 * y) as f64,
-                        (32 * z) as f64,
-                    ));
+                let chunk_meshes = bake(&block_registry, &chunk);
+                for (bid, mesh) in chunk_meshes {
+                    if let Some(mat) = block_registry.material_from_id(&bid) {
+                        commands.spawn(PbrBundle {
+                            mesh: meshes.add(mesh),
+                            material: mat.clone(),
+                            ..default()
+                        }).insert(WorldPosition::from_xyz(
+                            (32 * x) as f64,
+                            (32 * y) as f64,
+                            (32 * z) as f64,
+                        ));
+                    }
+                }
             }
         }
     }
 }
 
+#[allow(dead_code)]
 fn uv_debug_texture() -> Image {
     const TEXTURE_SIZE: usize = 8;
 

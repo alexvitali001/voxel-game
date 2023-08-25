@@ -4,7 +4,7 @@ use noise::Perlin;
 
 pub const CHUNK_SIZE: usize = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct BlockId(pub u32);
 
 pub const AIR: BlockId = BlockId(0);
@@ -52,7 +52,7 @@ impl Chunk {
 
                 // convert them to f64 and scale to put in noise
                 let smoothness = 10.0;
-                let amplitude = 5.0;
+                let amplitude = 10.0;
                 let noise_x = x as f64 / smoothness;
                 let noise_z = z as f64 / smoothness;
 
