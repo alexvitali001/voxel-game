@@ -32,7 +32,7 @@ fn init_this_player(mut commands: Commands) {
 fn camera_mover(
     keys: Res<Input<KeyCode>>,
     mouse: Res<Input<MouseButton>>,
-    mut query: Query<(&ThisPlayer, &mut WorldPosition)>,
+    mut query: Query<&mut WorldPosition, With<ThisPlayer>>,
     mut window_query: Query<&mut Window>,
 ) {
     // handle mouse locking
@@ -47,7 +47,7 @@ fn camera_mover(
     }
 
     // handle direction
-    let (_, mut worldpos) = query.single_mut();
+    let mut worldpos = query.single_mut();
     let forward = worldpos.forward();
     let left = worldpos.left();
 
