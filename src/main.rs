@@ -1,3 +1,9 @@
+mod debugtext;
+mod player;
+mod position;
+mod chunkworld;
+mod block;
+
 use bevy::window::PrimaryWindow;
 use bevy::{
     asset::Assets,
@@ -8,19 +14,15 @@ use bevy::{
 };
 use block::basicblock::BlockMaterial;
 use block::blockregistry::BlockRegistry;
-use block::chunk::Chunk;
 use block::mesh::bake;
 use block_mesh::VoxelVisibility;
-mod debugtext;
-mod player;
-mod position;
+use chunkworld::ChunkWorld;
 
 use crate::block::basicblock::BasicBlock;
 use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 
 use position::*;
-mod block;
 
 fn main() {
     let image_plugin = ImagePlugin {
@@ -35,6 +37,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(image_plugin))
         .add_plugins((PlayerPlugin, DebugTextPlugin))
         .insert_resource(BlockRegistry::new())
+        .insert_resource(ChunkWorld::new())
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(Update, translate_all_world_transforms)
@@ -88,6 +91,7 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ambient_light: ResMut<AmbientLight>,
     block_registry: Res<BlockRegistry>,
+    mut world: ResMut<ChunkWorld>
 ) {
     let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {
@@ -136,7 +140,7 @@ fn setup(
     for x in -10..=10 {
         for z in -10..=10 {
             for y in -1..=0 {
-                let chunk = Chunk::generate_chunk(&block_registry, x, y, z);
+                let chunk = world.load_chunk(&block_registry, x, y, z);
                 let chunk_meshes = bake(&block_registry, &chunk);
                 for (bid, mesh) in chunk_meshes {
                     if let Some(mat) = block_registry.material_from_id(&bid) {
