@@ -76,7 +76,12 @@ fn camera_mover(
         return;
     }
 
-    let speed = 0.1;
+    let speed = if keys.pressed(KeyCode::ControlLeft) {
+        0.25
+    } else {
+        0.1
+    };
+
     worldpos.position += speed * direction.normalize();
 }
 
