@@ -30,8 +30,8 @@ fn init_this_player(mut commands: Commands) {
 }
 
 fn camera_mover(
-    keys: Res<Input<KeyCode>>,
-    mouse: Res<Input<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse: Res<ButtonInput<MouseButton>>,
     mut query: Query<&mut WorldPosition, With<ThisPlayer>>,
     mut window_query: Query<&mut Window>,
 ) {
@@ -53,16 +53,16 @@ fn camera_mover(
 
     let mut direction = DVec3::ZERO;
 
-    if keys.pressed(KeyCode::W) {
+    if keys.pressed(KeyCode::KeyW) {
         direction += forward;
     }
-    if keys.pressed(KeyCode::S) {
+    if keys.pressed(KeyCode::KeyS) {
         direction -= forward;
     }
-    if keys.pressed(KeyCode::A) {
+    if keys.pressed(KeyCode::KeyA) {
         direction += left;
     }
-    if keys.pressed(KeyCode::D) {
+    if keys.pressed(KeyCode::KeyD) {
         direction -= left;
     }
     if keys.pressed(KeyCode::Space) {
@@ -96,7 +96,7 @@ fn camera_rotator(
         return;
     }
 
-    let mouse_vec: Vec2 = mouse_motion_event_reader.iter().map(|x| x.delta).sum();
+    let mouse_vec: Vec2 = mouse_motion_event_reader.read().map(|x| x.delta).sum();
 
     if mouse_vec == Vec2::ZERO {
         return;

@@ -8,9 +8,19 @@ use bevy::window::PrimaryWindow;
 use bevy::{
     asset::Assets,
     prelude::*,
-    render::render_resource::{
-        AddressMode::*, Extent3d, FilterMode::*, SamplerDescriptor, TextureDimension, TextureFormat,
+    render::{
+        texture::{
+            ImageSamplerDescriptor,
+            ImageAddressMode::*,
+            ImageFilterMode::*
+        },
+        render_resource::{
+            Extent3d, TextureDimension, TextureFormat
+        },
+        render_asset::RenderAssetUsages,
     },
+    color::palettes::basic::SILVER,
+    color::palettes::css::ALICE_BLUE
 };
 use block::basicblock::BlockMaterial;
 use block::blockregistry::BlockRegistry;
@@ -26,7 +36,7 @@ use position::*;
 
 fn main() {
     let image_plugin = ImagePlugin {
-        default_sampler: SamplerDescriptor {
+        default_sampler: ImageSamplerDescriptor {
             address_mode_u: Repeat,
             address_mode_v: Repeat,
             mag_filter: Nearest,
@@ -99,7 +109,7 @@ fn setup(
         ..default()
     });
 
-    let test_torus = meshes.add(shape::Torus::default().into());
+    let test_torus = meshes.add(Torus::default());
 
     commands
         .spawn((PbrBundle {
@@ -109,26 +119,26 @@ fn setup(
         },))
         .insert(WorldPosition::from_xyz(0.0, 2.0, 0.0));
 
-    ambient_light.color = Color::ALICE_BLUE;
+    ambient_light.color = ALICE_BLUE.into();
     ambient_light.brightness = 0.4;
 
-    commands
-        .spawn(PointLightBundle {
-            point_light: PointLight {
-                intensity: 9000.0,
-                range: 1000.,
-                shadows_enabled: true,
-                ..default()
-            },
-            ..default()
-        })
-        .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
+    // commands
+    //     .spawn(PointLightBundle {
+    //         point_light: PointLight {
+    //             intensity: 9000.0,
+    //             range: 1000.,
+    //             shadows_enabled: true,
+    //             ..default()
+    //         },
+    //         ..default()
+    //     })
+    //     .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
 
     // ground plane
     commands
         .spawn(PbrBundle {
-            mesh: meshes.add(shape::Plane::from_size(50.0).into()),
-            material: materials.add(Color::SILVER.into()),
+            mesh: meshes.add(Plane3d::default().mesh().size(50.0, 50.0)),
+            material: materials.add(Color::Srgba(SILVER)),
             ..default()
         })
         .insert(WorldPosition::from_xyz(0.0, -100.0, 0.0));
@@ -187,5 +197,6 @@ fn uv_debug_texture() -> Image {
         TextureDimension::D2,
         &texture_data,
         TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD
     )
 }

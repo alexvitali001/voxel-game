@@ -18,7 +18,7 @@ fn setup_debug_text(mut commands: Commands) {
                 ..default()
             },
         ) // Set the alignment of the Text
-        .with_text_alignment(TextAlignment::Left)
+        .with_text_justify(JustifyText::Left)
         // Set the style of the TextBundle itself.
         .with_style(Style {
             position_type: PositionType::Absolute,
@@ -45,7 +45,7 @@ fn update_debug_text(
 
     // Diagnostics
     let fps = diagnostics
-        .get(FrameTimeDiagnosticsPlugin::FPS)
+        .get(&FrameTimeDiagnosticsPlugin::FPS)
         .unwrap()
         .smoothed()
         .unwrap_or_default();

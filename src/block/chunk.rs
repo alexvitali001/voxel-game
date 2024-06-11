@@ -2,13 +2,15 @@ use crate::block::blockregistry::BlockRegistry;
 use noise::NoiseFn;
 use noise::Perlin;
 
+use serde::{Serialize, Deserialize};
+
 pub const CHUNK_SIZE: usize = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlockId(pub u32);
 
 pub const AIR: BlockId = BlockId(0);
-
+#[derive(Serialize, Deserialize)]
 pub struct Chunk {
     blocks: [[[BlockId; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
 }

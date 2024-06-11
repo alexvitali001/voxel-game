@@ -6,6 +6,7 @@ use bevy::{
     render::{
         mesh::{Indices, VertexAttributeValues},
         render_resource::PrimitiveTopology,
+        render_asset::RenderAssetUsages
     },
 };
 use block_mesh::{
@@ -45,7 +46,8 @@ struct PreMesh {
 
 impl PreMesh {
     fn construct(self) -> Mesh {
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList,
+                                 RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD);
         mesh.insert_attribute(
             Mesh::ATTRIBUTE_POSITION,
             VertexAttributeValues::Float32x3(self.vertices),
@@ -67,7 +69,7 @@ impl PreMesh {
         //    VertexAttributeValues::Uint32(data),
         // );
 
-        mesh.set_indices(Some(Indices::U32(self.indices)));
+        mesh.insert_indices(Indices::U32(self.indices));
         return mesh;
     }
 }
