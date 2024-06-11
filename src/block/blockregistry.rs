@@ -2,12 +2,13 @@ use crate::block::basicblock::BasicBlock;
 use crate::block::chunk::BlockId;
 use crate::BlockMaterial::*;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::*;
 use bevy::utils::default;
 
-#[derive(Resource)]
+#[derive(Default)]
 pub struct BlockRegistry {
     registered_blocks: Vec<BasicBlock>,
     name_map: HashMap<String, BlockId>,
@@ -65,8 +66,3 @@ impl BlockRegistry {
     }
 }
 
-impl Default for BlockRegistry {
-    fn default() -> Self {
-        return BlockRegistry::new();
-    }
-}

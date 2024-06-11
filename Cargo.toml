@@ -8,7 +8,9 @@ edition = "2021"
 [dependencies]
 bevy = "0.11.2"
 block-mesh = { git = "https://github.com/bonsairobo/block-mesh-rs", version = "0.2.0" }
+futures-lite = "2.3.0"
 noise = "0.8.2"
+parking_lot = "0.12.3"
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

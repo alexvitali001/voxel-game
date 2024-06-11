@@ -1,6 +1,7 @@
 use crate::block::blockregistry::BlockRegistry;
 use noise::NoiseFn;
 use noise::Perlin;
+use bevy::prelude::Component;
 
 pub const CHUNK_SIZE: usize = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
@@ -9,6 +10,7 @@ pub struct BlockId(pub u32);
 
 pub const AIR: BlockId = BlockId(0);
 
+#[derive(Component)]
 pub struct Chunk {
     blocks: [[[BlockId; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
 }

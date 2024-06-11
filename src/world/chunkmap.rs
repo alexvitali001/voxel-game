@@ -6,13 +6,13 @@ use crate::block::blockregistry::BlockRegistry;
 use bevy::prelude::*;
 
 #[derive(Resource)]
-pub struct ChunkWorld {
+pub struct ChunkMap {
     db: HashMap<(i32, i32, i32), Chunk>
 }
 
-impl ChunkWorld {
+impl ChunkMap {
     pub fn new() -> Self {
-        ChunkWorld {
+        ChunkMap {
             db: HashMap::new()
         }
     }
@@ -33,8 +33,8 @@ impl ChunkWorld {
     }
 }
 
-impl Default for ChunkWorld {
+impl Default for ChunkMap {
     fn default() -> Self {
-        return ChunkWorld::new();
+        return ChunkMap::new();
     }
 }

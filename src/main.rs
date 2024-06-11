@@ -1,8 +1,9 @@
 mod debugtext;
 mod player;
 mod position;
-mod chunkworld;
+mod world;
 mod block;
+mod registryresource;
 
 use bevy::window::PrimaryWindow;
 use bevy::{
@@ -16,7 +17,9 @@ use block::basicblock::BlockMaterial;
 use block::blockregistry::BlockRegistry;
 use block::mesh::bake;
 use block_mesh::VoxelVisibility;
-use chunkworld::ChunkWorld;
+use world::chunkmap::ChunkMap;
+use registryresource::RegistryResource;
+use world::gen::{ChunkEventsPlugin, GenerateChunkEvent};
 
 use crate::block::basicblock::BasicBlock;
 use crate::debugtext::DebugTextPlugin;
@@ -33,11 +36,12 @@ fn main() {
             ..default()
         },
     };
+
     App::new()
         .add_plugins(DefaultPlugins.set(image_plugin))
-        .add_plugins((PlayerPlugin, DebugTextPlugin))
-        .insert_resource(BlockRegistry::new())
-        .insert_resource(ChunkWorld::new())
+        .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
+        .insert_resource(RegistryResource::new(BlockRegistry::new()))
+        .insert_resource(ChunkMap::new())
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(Update, translate_all_world_transforms)
@@ -54,8 +58,10 @@ fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
 fn build_block_registry(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut block_registry: ResMut<BlockRegistry>,
+    mut block_registry_resource: ResMut<RegistryResource<BlockRegistry>>,
 ) {
+    let br = block_registry_resource.clone_registry();
+    let mut block_registry = br.write();
     block_registry.register_block(
         &mut materials,
         BasicBlock {
@@ -90,8 +96,8 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ambient_light: ResMut<AmbientLight>,
-    block_registry: Res<BlockRegistry>,
-    mut world: ResMut<ChunkWorld>
+    mut ev_gen : EventWriter<GenerateChunkEvent>,
+    mut world: ResMut<ChunkMap>
 ) {
     let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {
@@ -136,27 +142,10 @@ fn setup(
     // test chunk
 
     println!("making chunks");
-
     for x in -10..=10 {
         for z in -10..=10 {
             for y in -1..=0 {
-                let chunk = world.load_chunk(&block_registry, x, y, z);
-                let chunk_meshes = bake(&block_registry, &chunk);
-                for (bid, mesh) in chunk_meshes {
-                    if let Some(mat) = block_registry.material_from_id(&bid) {
-                        commands
-                            .spawn(PbrBundle {
-                                mesh: meshes.add(mesh),
-                                material: mat.clone(),
-                                ..default()
-                            })
-                            .insert(WorldPosition::from_xyz(
-                                (32 * x) as f64,
-                                (32 * y) as f64,
-                                (32 * z) as f64,
-                            ));
-                    }
-                }
+                ev_gen.send(GenerateChunkEvent(IVec3::new(x,y,z)));
             }
         }
     }
