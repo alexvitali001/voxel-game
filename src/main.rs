@@ -128,17 +128,17 @@ fn setup(
     ambient_light.color = ALICE_BLUE.into();
     ambient_light.brightness = 0.4;
 
-    // commands
-    //     .spawn(PointLightBundle {
-    //         point_light: PointLight {
-    //             intensity: 9000.0,
-    //             range: 1000.,
-    //             shadows_enabled: true,
-    //             ..default()
-    //         },
-    //         ..default()
-    //     })
-    //     .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
+    commands
+        .spawn(PointLightBundle {
+            point_light: PointLight {
+                intensity: 9000.0,
+                range: 1000.,
+                shadows_enabled: true,
+                ..default()
+            },
+            ..default()
+        })
+        .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
 
     // ground plane
     commands

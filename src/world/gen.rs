@@ -36,7 +36,7 @@ fn on_generate_chunk(
     let task_pool = AsyncComputeTaskPool::get();
 
     // is read() in v14
-    for ev in ev_gen.iter() {
+    for ev in ev_gen.read() {
         let coords = ev.0;
         let br_arc = block_registry_resource.clone_registry();
         commands.spawn(
@@ -57,7 +57,8 @@ fn finish_generating_tasks(
 ) {
     let br_arc = block_registry_resource.clone_registry();
     let block_registry = br_arc.read();
-    chunk_query.for_each_mut(|(entity, mut old_meshes, ChunkPosition(pos), mut task)| {
+    chunk_query.iter_mut()
+        .for_each(|(entity, mut old_meshes, ChunkPosition(pos), mut task)| {
         if let Some(chunk) = future::block_on(future::poll_once(&mut task.0)) {
 
             // THIS SHOULD EVENTUALLY BE A MESHING EVENT 
