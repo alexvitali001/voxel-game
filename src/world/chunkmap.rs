@@ -38,33 +38,33 @@ impl ChunkMap {
         chunk_z: i32,
     ) -> &Chunk {
         let coords = (chunk_x, chunk_y, chunk_z);
-        // println!("fetching {:?}", coords);
         if !self.cache.contains(&coords) {
-            // println!("not in level one cache");
             let key = encode::to_vec(&coords)
                 .expect("Serialiser could not serialise key");
-            let serc;
+            let c;
             if !self.db.contains_key(key.as_slice())
                 .expect("Sled DB failed to query for existence of key") {
-                // println!("not in db, generating");
-                let c = Chunk::generate_chunk(registry, chunk_x, chunk_y, chunk_z);
-                serc = encode::to_vec(&c).expect("Could not serialise chunk");
-                // println!("serialising");
-                self.db.insert(key.as_slice(), serc)
-                    .expect("Sled DB failed to insert");
-                // println!("inserting into db");
+                c = Chunk::generate_chunk(registry, chunk_x, chunk_y, chunk_z);
+            } else {
+                let val = self.db.get(key.as_slice())
+                    .expect("Sled DB encountered error")
+                    .expect("Chunk should be generated if not already present before this");
+                c = decode::from_slice(&val)
+                    .expect("Deserialisation failed");
             }
-            // println!("updating level one cache");
-            let val = self.db.get(key.as_slice())
-                .expect("Sled DB encountered error")
-                .expect("Chunk should be generated if not already present before this");
-            // println!("fetched value from db");
-            let c = decode::from_slice(&val)
-                .expect("Deserialisation failed");
-            // println!("deserialized");
-            self.cache.put(coords, c);
+            match self.cache.push(coords, c) {
+                Some(res) => {
+                    if coords != res.0 {
+                        let ser_coords = encode::to_vec(&res.0)
+                            .expect("Failed to serialize coords");
+                        let ser_chunk = encode::to_vec(&res.1)
+                            .expect("Could not serialise chunk");
+                        self.db.insert(ser_coords, ser_chunk)
+                            .expect("Sled DB failed to insert");
+                    }
+                }, None => {}
+            };
         }
-        // println!("found, returning\n");
         self.cache.get(&coords).expect("This chunk should be in the cache")
     }
 }

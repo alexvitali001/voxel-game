@@ -123,15 +123,15 @@ fn setup(
             material: debug_material.clone(),
             ..default()
         },))
-        .insert(WorldPosition::from_xyz(0.0, 2.0, 0.0));
+        .insert(WorldPosition::from_xyz(0.0, 40.0, 0.0));
 
     ambient_light.color = ALICE_BLUE.into();
-    ambient_light.brightness = 0.4;
+    ambient_light.brightness = 640.0;
 
     commands
         .spawn(PointLightBundle {
             point_light: PointLight {
-                intensity: 9000.0,
+                intensity: 14400000.0,
                 range: 1000.,
                 shadows_enabled: true,
                 ..default()
