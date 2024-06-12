@@ -119,18 +119,15 @@ fn finish_remeshing_tasks(
     let block_registry = br_arc.read();
 
     chunk_query.iter_mut()
-        .for_each(|(entity, mut old_meshes, ChunkPosition(pos), mut task)| {
+        .for_each(|(entity, mut mesh_list, ChunkPosition(pos), mut task)| {
             if let Some(new_meshes) = future::block_on(future::poll_once(&mut task.0)) {
                 // delete all previous meshes
                 // does despawning the entity automatically unload the mesh asset in Assets<Mesh>?
                 // is that something we need to worry about?
                 // if unloading isnt automatic, this leaks memory. Too Bad!
-                for m in old_meshes.0.drain(..) {
+                for m in mesh_list.0.drain(..) {
                     commands.entity(m).despawn();
                 }
-
-                // spawn new meshes and record their ids in the mesh list
-                let mut mesh_list: Vec<Entity> = Vec::new();
 
                 for (bid, mesh) in new_meshes {
                     if let Some(mat) = block_registry.material_from_id(&bid) {
@@ -145,12 +142,12 @@ fn finish_remeshing_tasks(
                                 (32 * pos.y) as f64,
                                 (32 * pos.z) as f64,
                             )).id();
-                        mesh_list.push(e);
+                        mesh_list.0.push(e);
                     }
                 }
 
                 // update the mesh list
-                commands.entity(entity).insert(ChunkMeshList(mesh_list)).remove::<ChunkRemeshTask>();
+                commands.entity(entity).remove::<ChunkRemeshTask>();
             }
         })
 }
