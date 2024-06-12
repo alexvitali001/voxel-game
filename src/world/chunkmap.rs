@@ -8,16 +8,11 @@ use rmp_serde::{decode, encode};
 
 use sled;
 use std::env;
-use std::num::NonZeroUsize;
-use lru::LruCache;
 
 #[derive(Resource)]
 pub struct ChunkMap {
-    db: sled::Db,
-    cache: LruCache<(i32, i32, i32), Chunk>
+    db: sled::Db
 }
-
-const LRU_CACHE_SIZE: usize = 4096;
 
 impl ChunkMap {
     pub fn new() -> Self {
@@ -25,9 +20,17 @@ impl ChunkMap {
         println!("{:?}", path);
         ChunkMap {
             db: sled::open(path)
-                .expect("Database creation failed"),
-            cache: LruCache::new(NonZeroUsize::new(LRU_CACHE_SIZE).unwrap())
+                .expect("Database creation failed")
         }
+    }
+
+    pub fn flush_chunk(&mut self, coords: &(i32, i32, i32), chunk: &Chunk) {
+        let ser_coords = encode::to_vec(coords)
+            .expect("Failed to serialize coords");
+        let ser_chunk = encode::to_vec(chunk)
+            .expect("Could not serialise chunk");
+        self.db.insert(ser_coords, ser_chunk)
+            .expect("Sled DB failed to insert");
     }
 
     pub fn load_chunk(
@@ -36,36 +39,32 @@ impl ChunkMap {
         chunk_x: i32,
         chunk_y: i32,
         chunk_z: i32,
-    ) -> &Chunk {
+    ) -> Option<Chunk> {
         let coords = (chunk_x, chunk_y, chunk_z);
-        if !self.cache.contains(&coords) {
-            let key = encode::to_vec(&coords)
-                .expect("Serialiser could not serialise key");
-            let c;
-            if !self.db.contains_key(key.as_slice())
-                .expect("Sled DB failed to query for existence of key") {
-                c = Chunk::generate_chunk(registry, chunk_x, chunk_y, chunk_z);
-            } else {
-                let val = self.db.get(key.as_slice())
-                    .expect("Sled DB encountered error")
-                    .expect("Chunk should be generated if not already present before this");
-                c = decode::from_slice(&val)
-                    .expect("Deserialisation failed");
-            }
-            match self.cache.push(coords, c) {
-                Some(res) => {
-                    if coords != res.0 {
-                        let ser_coords = encode::to_vec(&res.0)
-                            .expect("Failed to serialize coords");
-                        let ser_chunk = encode::to_vec(&res.1)
-                            .expect("Could not serialise chunk");
-                        self.db.insert(ser_coords, ser_chunk)
-                            .expect("Sled DB failed to insert");
-                    }
-                }, None => {}
-            };
+        let key = encode::to_vec(&coords)
+            .expect("Serialiser could not serialise key");
+        if !self.db.contains_key(key.as_slice())
+            .expect("Sled DB failed to query for existence of key") {
+            // TODO: impl chunk generation here!!
+            None
+        } else {
+            let val = self.db.get(key.as_slice())
+                .expect("Sled DB encountered error")
+                .expect("Chunk should be generated if not already present before this");
+            Some(decode::from_slice(&val)
+                .expect("Deserialisation failed"))
         }
-        self.cache.get(&coords).expect("This chunk should be in the cache")
+    }
+
+    pub fn load_chunk_exists(
+        &mut self,
+        registry: &BlockRegistry,
+        chunk_x: i32,
+        chunk_y: i32,
+        chunk_z: i32,
+    ) -> Chunk {
+        self.load_chunk(registry, chunk_x, chunk_y, chunk_z)
+            .expect("there should be a chunk")
     }
 }
 
