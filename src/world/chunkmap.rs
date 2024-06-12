@@ -1,7 +1,6 @@
 
 
 use crate::block::chunk::Chunk;
-use crate::block::blockregistry::BlockRegistry;
 use bevy::prelude::*;
 
 use rmp_serde::{decode, encode};
@@ -33,9 +32,8 @@ impl ChunkMap {
             .expect("Sled DB failed to insert");
     }
 
-    pub fn load_chunk(
-        &mut self,
-        registry: &BlockRegistry,
+    pub fn fetch_chunk(
+        &self,
         chunk_x: i32,
         chunk_y: i32,
         chunk_z: i32,
@@ -45,25 +43,24 @@ impl ChunkMap {
             .expect("Serialiser could not serialise key");
         if !self.db.contains_key(key.as_slice())
             .expect("Sled DB failed to query for existence of key") {
-            // TODO: impl chunk generation here!!
             None
         } else {
             let val = self.db.get(key.as_slice())
                 .expect("Sled DB encountered error")
                 .expect("Chunk should be generated if not already present before this");
+            println!("penis wenis dick and balls");
             Some(decode::from_slice(&val)
                 .expect("Deserialisation failed"))
         }
     }
 
-    pub fn load_chunk_exists(
-        &mut self,
-        registry: &BlockRegistry,
+    pub fn fetch_chunk_exists(
+        &self,
         chunk_x: i32,
         chunk_y: i32,
         chunk_z: i32,
     ) -> Chunk {
-        self.load_chunk(registry, chunk_x, chunk_y, chunk_z)
+        self.fetch_chunk(chunk_x, chunk_y, chunk_z)
             .expect("there should be a chunk")
     }
 }

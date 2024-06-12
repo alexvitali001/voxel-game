@@ -25,7 +25,6 @@ use bevy::{
 };
 use block::basicblock::BlockMaterial;
 use block::blockregistry::BlockRegistry;
-use block::mesh::bake;
 use block_mesh::VoxelVisibility;
 use world::chunkmap::ChunkMap;
 use registryresource::RegistryResource;
@@ -51,7 +50,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(image_plugin))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
         .insert_resource(RegistryResource::new(BlockRegistry::new()))
-        .insert_resource(ChunkMap::new())
+        .insert_resource(RegistryResource::new(ChunkMap::new()))
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(Update, translate_all_world_transforms)
@@ -68,7 +67,7 @@ fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
 fn build_block_registry(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut block_registry_resource: ResMut<RegistryResource<BlockRegistry>>,
+    block_registry_resource: ResMut<RegistryResource<BlockRegistry>>,
 ) {
     let br = block_registry_resource.clone_registry();
     let mut block_registry = br.write();
@@ -106,8 +105,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ambient_light: ResMut<AmbientLight>,
-    mut ev_gen : EventWriter<GenerateChunkEvent>,
-    mut world: ResMut<ChunkMap>
+    mut ev_gen : EventWriter<GenerateChunkEvent>
 ) {
     let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {

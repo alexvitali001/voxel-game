@@ -2,7 +2,6 @@ use crate::block::basicblock::BasicBlock;
 use crate::block::chunk::BlockId;
 use crate::BlockMaterial::*;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use bevy::pbr::StandardMaterial;
 use bevy::prelude::*;
