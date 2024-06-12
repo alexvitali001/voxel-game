@@ -63,7 +63,7 @@ fn finish_generating_tasks(
         if let Some(chunk) = future::block_on(future::poll_once(&mut task.0)) {
             // write the chunk to the database
             let mut chunkmap = cm_arc.write();
-            chunkmap.flush_chunk(&(pos.x, pos.y, pos.z), &chunk);
+            chunkmap.flush_chunk(&pos, &chunk);
             println!("flushed chunk {} {} {}", pos.x, pos.y, pos.z);
 
             // add the chunk data to the chunk component and delete the task that generated it
@@ -98,7 +98,7 @@ fn on_chunk_remesh(
 
     for ChunkRemeshEvent(pos, e) in ev_remesh.read() {
         println!("grabbing {} {} {}", pos.x, pos.y, pos.z);
-        let c = chunkmap.fetch_chunk_exists(pos.x, pos.y, pos.z);
+        let c = chunkmap.fetch_chunk_exists(pos);
         let br_arc = block_registry_resource.clone_registry();
         println!("remeshing {} {} {}", pos.x, pos.y, pos.z);
         commands.entity(*e).insert(
@@ -150,7 +150,7 @@ fn finish_remeshing_tasks(
                 }
 
                 // update the mesh list
-                commands.entity(entity).insert(ChunkMeshList(mesh_list));
+                commands.entity(entity).insert(ChunkMeshList(mesh_list)).remove::<ChunkRemeshTask>();
             }
         })
 }

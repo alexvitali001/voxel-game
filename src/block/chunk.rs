@@ -3,16 +3,22 @@ use noise::NoiseFn;
 use noise::Perlin;
 use bevy::prelude::Component;
 
-use serde::{Serialize, Deserialize};
+use {
+    zerocopy::{
+        AsBytes, FromBytes, FromZeroes
+    },
+};
 
 pub const CHUNK_SIZE: usize = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, FromBytes, FromZeroes, AsBytes)]
+#[repr(C)]
 pub struct BlockId(pub u32);
 
 pub const AIR: BlockId = BlockId(0);
 
-#[derive(Component, Serialize, Deserialize)]
+#[derive(Component, FromBytes, FromZeroes, AsBytes)]
+#[repr(C)]
 pub struct Chunk {
     blocks: [[[BlockId; CHUNK_SIZE]; CHUNK_SIZE]; CHUNK_SIZE],
 }

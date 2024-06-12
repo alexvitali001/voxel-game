@@ -3,10 +3,18 @@
 use crate::block::chunk::Chunk;
 use bevy::prelude::*;
 
-use rmp_serde::{decode, encode};
-
 use sled;
 use std::env;
+
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
+
+#[derive(AsBytes, FromBytes, FromZeroes)]
+#[repr(C)]
+pub struct Coords {
+    x: i32,
+    y: i32,
+    z: i32
+}
 
 #[derive(Resource)]
 pub struct ChunkMap {
@@ -23,44 +31,45 @@ impl ChunkMap {
         }
     }
 
-    pub fn flush_chunk(&mut self, coords: &(i32, i32, i32), chunk: &Chunk) {
-        let ser_coords = encode::to_vec(coords)
-            .expect("Failed to serialize coords");
-        let ser_chunk = encode::to_vec(chunk)
-            .expect("Could not serialise chunk");
+    pub fn flush_chunk(&mut self, coords: &IVec3, chunk: &Chunk) {
+        let coords = Coords {
+            x: coords.x,
+            y: coords.y,
+            z: coords.z
+        };
+        let ser_coords = coords.as_bytes();
+        let ser_chunk = chunk.as_bytes();
         self.db.insert(ser_coords, ser_chunk)
             .expect("Sled DB failed to insert");
     }
 
     pub fn fetch_chunk(
         &self,
-        chunk_x: i32,
-        chunk_y: i32,
-        chunk_z: i32,
+        coords: &IVec3,
     ) -> Option<Chunk> {
-        let coords = (chunk_x, chunk_y, chunk_z);
-        let key = encode::to_vec(&coords)
-            .expect("Serialiser could not serialise key");
-        if !self.db.contains_key(key.as_slice())
+        let coords = Coords {
+            x: coords.x,
+            y: coords.y,
+            z: coords.z
+        };
+        let key = coords.as_bytes();
+        if !self.db.contains_key(key)
             .expect("Sled DB failed to query for existence of key") {
             None
         } else {
-            let val = self.db.get(key.as_slice())
+            let val = self.db.get(key)
                 .expect("Sled DB encountered error")
                 .expect("Chunk should be generated if not already present before this");
             println!("penis wenis dick and balls");
-            Some(decode::from_slice(&val)
-                .expect("Deserialisation failed"))
+            Chunk::read_from(val.as_ref())
         }
     }
 
     pub fn fetch_chunk_exists(
         &self,
-        chunk_x: i32,
-        chunk_y: i32,
-        chunk_z: i32,
+        coords: &IVec3,
     ) -> Chunk {
-        self.fetch_chunk(chunk_x, chunk_y, chunk_z)
+        self.fetch_chunk(coords)
             .expect("there should be a chunk")
     }
 }
