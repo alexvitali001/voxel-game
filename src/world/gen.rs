@@ -55,14 +55,12 @@ fn finish_generating_tasks(
     mut chunk_query: Query<(Entity, &ChunkPosition, &mut GenerateChunkTask)>,
     mut commands: Commands,
     mut ev_remesh: EventWriter<ChunkRemeshEvent>,
-    chunkmap_resource: Res<RegistryResource<ChunkMap>>
+    mut chunkmap: ResMut<ChunkMap>
 ) {
-    let cm_arc = chunkmap_resource.clone_registry();
     chunk_query.iter_mut()
         .for_each(|(entity, ChunkPosition(pos), mut task)| {
         if let Some(chunk) = future::block_on(future::poll_once(&mut task.0)) {
             // write the chunk to the database
-            let mut chunkmap = cm_arc.write();
             chunkmap.flush_chunk(&pos, &chunk);
             println!("flushed chunk {} {} {}", pos.x, pos.y, pos.z);
 
@@ -88,12 +86,8 @@ fn on_chunk_remesh(
     mut ev_remesh : EventReader<ChunkRemeshEvent>,
     mut commands : Commands,
     block_registry_resource: Res<RegistryResource<BlockRegistry>>,
-    chunkmap_resource: Res<RegistryResource<ChunkMap>>
+    chunkmap: Res<ChunkMap>
 ) {
-
-    let cm_arc = chunkmap_resource.clone_registry();
-    let chunkmap = cm_arc.read();
-
     let task_pool = AsyncComputeTaskPool::get();
 
     for ChunkRemeshEvent(pos, e) in ev_remesh.read() {

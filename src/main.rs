@@ -50,7 +50,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(image_plugin))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
         .insert_resource(RegistryResource::new(BlockRegistry::new()))
-        .insert_resource(RegistryResource::new(ChunkMap::new()))
+        .insert_resource(ChunkMap::new())
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(Update, translate_all_world_transforms)
