@@ -1,7 +1,7 @@
 use crate::block::blockregistry::BlockRegistry;
 use noise::NoiseFn;
 use noise::Perlin;
-use bevy::prelude::Component;
+use bevy::prelude::{Component, IVec3};
 
 use {
     zerocopy::{
@@ -41,12 +41,13 @@ impl Chunk {
 
     pub fn generate_chunk(
         registry: &BlockRegistry,
-        chunk_x: i32,
-        chunk_y: i32,
-        chunk_z: i32,
+        coords: IVec3,
     ) -> Chunk {
         let noise = Perlin::new(0);
         let mut chunk = Chunk::new();
+        let chunk_x = coords[0];
+        let chunk_y = coords[1];
+        let chunk_z = coords[2];
 
         let stone = registry.id_from_name(String::from("stone")).unwrap();
         let dirt = registry.id_from_name(String::from("dirt")).unwrap();

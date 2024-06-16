@@ -5,6 +5,8 @@ use bevy::prelude::*;
 
 use sled;
 use std::env;
+use sled::IVec;
+use sled::MergeOperator;
 
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
@@ -16,7 +18,7 @@ pub struct Coords {
     z: i32
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct ChunkMap {
     db: sled::Db
 }
@@ -26,12 +28,16 @@ impl ChunkMap {
         let path = env::temp_dir().join("chunkworld");
         println!("{:?}", path);
         ChunkMap {
-            db: sled::open(path)
-                .expect("Database creation failed")
+            db: sled::Config::default()
+                .path(path)
+                .use_compression(true)
+                .compression_factor(5)
+                .mode(sled::Mode::HighThroughput)
+                .open().unwrap()
         }
     }
 
-    pub fn flush_chunk(&mut self, coords: &IVec3, chunk: &Chunk) {
+    pub fn flush_chunk(&self, coords: &IVec3, chunk: &Chunk) {
         let coords = Coords {
             x: coords.x,
             y: coords.y,
@@ -46,7 +52,7 @@ impl ChunkMap {
     pub fn fetch_chunk(
         &self,
         coords: &IVec3,
-    ) -> Option<Chunk> {
+    ) -> Option<IVec> {
         let coords = Coords {
             x: coords.x,
             y: coords.y,
@@ -60,15 +66,15 @@ impl ChunkMap {
             let val = self.db.get(key)
                 .expect("Sled DB encountered error")
                 .expect("Chunk should be generated if not already present before this");
-            println!("penis wenis dick and balls");
-            Chunk::read_from(val.as_ref())
+            // println!("penis wenis dick and balls");
+            Some(val)
         }
     }
 
     pub fn fetch_chunk_exists(
         &self,
         coords: &IVec3,
-    ) -> Chunk {
+    ) -> IVec {
         self.fetch_chunk(coords)
             .expect("there should be a chunk")
     }

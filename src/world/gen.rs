@@ -9,31 +9,33 @@ use crate::block::chunk::Chunk;
 use crate::block::mesh::bake;
 use crate::WorldPosition;
 use futures_lite::future;
+use zerocopy::FromBytes;
 use crate::world::chunkmap::ChunkMap;
 
 #[derive(Component)]
-pub struct ChunkPosition(IVec3);
+pub struct ChunkPosition(pub IVec3);
 
 #[derive(Component)]
-pub struct ChunkMeshList(Vec<Entity>);
+pub struct ChunkMeshList(pub Vec<Entity>);
 
 #[derive(Bundle)]
 pub struct UngeneratedChunkBundle {
-    chunk_position: ChunkPosition,
-    meshes: ChunkMeshList,
-    task: GenerateChunkTask
+    pub chunk_position: ChunkPosition,
+    pub meshes: ChunkMeshList,
+    pub task: GenerateChunkTask
 }
 
 #[derive(Event)]
 pub struct GenerateChunkEvent(pub IVec3);
 
 #[derive(Component)]
-pub struct GenerateChunkTask(Task<Chunk>);
+pub struct GenerateChunkTask(pub Task<()>);
 
 fn on_generate_chunk(
     mut ev_gen : EventReader<GenerateChunkEvent>,
     mut commands : Commands,
-    block_registry_resource: Res<RegistryResource<BlockRegistry>>
+    block_registry_resource: Res<RegistryResource<BlockRegistry>>,
+    chunkmap: Res<ChunkMap>
 ) {
     let task_pool = AsyncComputeTaskPool::get();
 
@@ -41,12 +43,15 @@ fn on_generate_chunk(
         let coords = ev.0;
         let br_arc = block_registry_resource.clone_registry();
         println!("generating {} {} {}", coords.x, coords.y, coords.z);
+        let cm = (*chunkmap.as_ref()).clone();
         commands.spawn(
             UngeneratedChunkBundle {
                 chunk_position: ChunkPosition(coords),
                 meshes: ChunkMeshList(Vec::new()), 
                 task: GenerateChunkTask(task_pool.spawn(async move {
-                    Chunk::generate_chunk(&br_arc.read(), coords.x, coords.y, coords.z)
+                    let c = Chunk::generate_chunk(&br_arc.read(), coords);
+                    cm.flush_chunk(&coords, &c);
+                    println!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
                 }))});
     }
 }
@@ -54,15 +59,12 @@ fn on_generate_chunk(
 fn finish_generating_tasks(
     mut chunk_query: Query<(Entity, &ChunkPosition, &mut GenerateChunkTask)>,
     mut commands: Commands,
-    mut ev_remesh: EventWriter<ChunkRemeshEvent>,
-    mut chunkmap: ResMut<ChunkMap>
+    mut ev_remesh: EventWriter<ChunkRemeshEvent>
 ) {
     chunk_query.iter_mut()
         .for_each(|(entity, ChunkPosition(pos), mut task)| {
         if let Some(chunk) = future::block_on(future::poll_once(&mut task.0)) {
             // write the chunk to the database
-            chunkmap.flush_chunk(&pos, &chunk);
-            println!("flushed chunk {} {} {}", pos.x, pos.y, pos.z);
 
             // add the chunk data to the chunk component and delete the task that generated it
             let ce = commands.entity(entity)
@@ -91,13 +93,16 @@ fn on_chunk_remesh(
     let task_pool = AsyncComputeTaskPool::get();
 
     for ChunkRemeshEvent(pos, e) in ev_remesh.read() {
-        println!("grabbing {} {} {}", pos.x, pos.y, pos.z);
+        // println!("grabbing {} {} {}", pos.x, pos.y, pos.z);
         let c = chunkmap.fetch_chunk_exists(pos);
         let br_arc = block_registry_resource.clone_registry();
-        println!("remeshing {} {} {}", pos.x, pos.y, pos.z);
+        // println!("remeshing {} {} {}", pos.x, pos.y, pos.z);
         commands.entity(*e).insert(
             ChunkRemeshTask(task_pool.spawn(async move {
-                bake(&br_arc.read(), &c)
+                bake(
+                    &br_arc.read(),
+                    Chunk::ref_from(c.as_ref()).unwrap()
+                )
             }))
         );
     }

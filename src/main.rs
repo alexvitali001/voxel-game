@@ -28,13 +28,14 @@ use block::blockregistry::BlockRegistry;
 use block_mesh::VoxelVisibility;
 use world::chunkmap::ChunkMap;
 use registryresource::RegistryResource;
-use world::gen::{ChunkEventsPlugin, GenerateChunkEvent};
+use world::gen::{ChunkEventsPlugin, GenerateChunkEvent, ChunkRemeshEvent};
 
 use crate::block::basicblock::BasicBlock;
 use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 
 use position::*;
+use crate::world::gen::{ChunkMeshList, ChunkPosition, GenerateChunkTask};
 
 fn main() {
     let image_plugin = ImagePlugin {
@@ -105,7 +106,8 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut ambient_light: ResMut<AmbientLight>,
-    mut ev_gen : EventWriter<GenerateChunkEvent>
+    mut ev_gen : EventWriter<GenerateChunkEvent>,
+    mut ev_remesh: EventWriter<ChunkRemeshEvent>
 ) {
     let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {
@@ -149,11 +151,18 @@ fn setup(
 
     // test chunk
 
+    const GEN_RADIUS: i32 = 20;
     println!("making chunks");
-    for x in -10..=10 {
-        for z in -10..=10 {
+    for x in -GEN_RADIUS..=GEN_RADIUS {
+        for z in -GEN_RADIUS..=GEN_RADIUS {
             for y in -1..=0 {
-                ev_gen.send(GenerateChunkEvent(IVec3::new(x,y,z)));
+                let coords = IVec3::new(x,y,z);
+                //ev_gen.send(GenerateChunkEvent(IVec3::new(x,y,z)));
+                let ent = commands.spawn_empty()
+                    .insert(ChunkPosition(coords))
+                    .insert(ChunkMeshList(Vec::new()))
+                    .id();
+                ev_remesh.send(ChunkRemeshEvent(coords, ent));
             }
         }
     }
