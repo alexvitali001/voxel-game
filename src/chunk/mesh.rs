@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::block::chunk::BlockId;
+use super::chunk::BlockId;
 use bevy::{
     prelude::Mesh,
     render::{
@@ -15,10 +15,8 @@ use block_mesh::{
     GreedyQuadsBuffer, MergeVoxel, Voxel, VoxelVisibility, RIGHT_HANDED_Y_UP_CONFIG,
 };
 
-use super::{
-    blockregistry::BlockRegistry,
-    chunk::{Chunk, AIR},
-};
+use super::chunk::{Chunk, AIR};
+use crate::world::universe::Universe;
 
 struct MeshVoxel {
     id: BlockId,
@@ -89,7 +87,7 @@ impl MergeVoxel for MeshVoxel {
 const CHUNK_MESH_SIZE: u32 = 32 + 2;
 type ChunkMeshShape = ConstShape3u32<CHUNK_MESH_SIZE, CHUNK_MESH_SIZE, CHUNK_MESH_SIZE>;
 
-pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
+pub fn bake(universe: &Universe, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
     let mut voxels = [AIRVOXEL; ChunkMeshShape::SIZE as usize];
 
     for i in 0..ChunkMeshShape::SIZE {
@@ -104,10 +102,10 @@ pub fn bake(registry: &BlockRegistry, chunk: &Chunk) -> HashMap<BlockId, Mesh> {
             continue;
         }
         let block_id = chunk.get(x - 1, y - 1, z - 1);
-        let block = registry.block_from_id(block_id);
+        let block = universe.get_block_data_id(block_id);
         voxels[i as usize] = MeshVoxel {
             id: block_id,
-            vis: block.mesh_visibility,
+            vis: block.block_type.get_visibility(),
         };
     }
     let mut buffer = GreedyQuadsBuffer::new(voxels.len());

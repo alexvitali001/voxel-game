@@ -1,6 +1,6 @@
 
 
-use crate::block::chunk::Chunk;
+use crate::chunk::chunk::Chunk;
 use bevy::prelude::*;
 
 use sled;

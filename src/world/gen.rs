@@ -2,15 +2,14 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use bevy::tasks::*;
-use crate::block::blockregistry::BlockRegistry;
-use crate::block::chunk::BlockId;
-use crate::registryresource::RegistryResource;
-use crate::block::chunk::Chunk;
-use crate::block::mesh::bake;
+use crate::chunk::chunk::BlockId;
+use crate::chunk::chunk::Chunk;
+use crate::chunk::mesh::bake;
 use crate::WorldPosition;
 use futures_lite::future;
 use zerocopy::FromBytes;
-use crate::world::chunkmap::ChunkMap;
+use super::universe::Universe;
+use super::block_materials::BlockMaterials;
 
 #[derive(Component)]
 pub struct ChunkPosition(pub IVec3);
@@ -34,23 +33,21 @@ pub struct GenerateChunkTask(pub Task<()>);
 fn on_generate_chunk(
     mut ev_gen : EventReader<GenerateChunkEvent>,
     mut commands : Commands,
-    block_registry_resource: Res<RegistryResource<BlockRegistry>>,
-    chunkmap: Res<ChunkMap>
+    universe: Res<Universe>
 ) {
     let task_pool = AsyncComputeTaskPool::get();
 
     for ev in ev_gen.read() {
         let coords = ev.0;
-        let br_arc = block_registry_resource.clone_registry();
         println!("generating {} {} {}", coords.x, coords.y, coords.z);
-        let cm = (*chunkmap.as_ref()).clone();
+        let u = (*universe.as_ref()).clone();
         commands.spawn(
             UngeneratedChunkBundle {
                 chunk_position: ChunkPosition(coords),
                 meshes: ChunkMeshList(Vec::new()), 
                 task: GenerateChunkTask(task_pool.spawn(async move {
-                    let c = Chunk::generate_chunk(&br_arc.read(), coords);
-                    cm.flush_chunk(&coords, &c);
+                    let c = Chunk::generate_chunk(&u, coords);
+                    u.flush_chunk(&coords, &c);
                     println!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
                 }))});
     }
@@ -63,7 +60,7 @@ fn finish_generating_tasks(
 ) {
     chunk_query.iter_mut()
         .for_each(|(entity, ChunkPosition(pos), mut task)| {
-        if let Some(chunk) = future::block_on(future::poll_once(&mut task.0)) {
+        if let Some(_) = future::block_on(future::poll_once(&mut task.0)) {
             // write the chunk to the database
 
             // add the chunk data to the chunk component and delete the task that generated it
@@ -87,22 +84,23 @@ pub struct ChunkRemeshTask(Task<HashMap<BlockId, Mesh>>);
 fn on_chunk_remesh(
     mut ev_remesh : EventReader<ChunkRemeshEvent>,
     mut commands : Commands,
-    block_registry_resource: Res<RegistryResource<BlockRegistry>>,
-    chunkmap: Res<ChunkMap>
+    universe: Res<Universe>
 ) {
     let task_pool = AsyncComputeTaskPool::get();
 
     for ChunkRemeshEvent(pos, e) in ev_remesh.read() {
-        // println!("grabbing {} {} {}", pos.x, pos.y, pos.z);
-        let c = chunkmap.fetch_chunk_exists(pos);
-        let br_arc = block_registry_resource.clone_registry();
-        // println!("remeshing {} {} {}", pos.x, pos.y, pos.z);
+        let u = (*universe.as_ref()).clone();
+        let c = u.fetch_chunk_exists(pos);
+        let p = pos.clone();
         commands.entity(*e).insert(
             ChunkRemeshTask(task_pool.spawn(async move {
-                bake(
-                    &br_arc.read(),
+                println!("remeshing {} {} {}", p.x, p.y, p.z);
+                let mm = bake(
+                    &u,
                     Chunk::ref_from(c.as_ref()).unwrap()
-                )
+                );
+                println!("done remeshing {} {} {}", p.x, p.y, p.z);
+                mm
             }))
         );
     }
@@ -111,12 +109,12 @@ fn on_chunk_remesh(
 fn finish_remeshing_tasks(
     mut chunk_query: Query<(Entity, &mut ChunkMeshList, &ChunkPosition, &mut ChunkRemeshTask)>,
     mut commands: Commands,
-    block_registry_resource: Res<RegistryResource<BlockRegistry>>,
-    mut mesh_assets: ResMut<Assets<Mesh>>
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+    mut block_materials: ResMut<BlockMaterials>,
+    universe: Res<Universe>,
+    asset_server: Res<AssetServer>,
 ) {
-    let br_arc = block_registry_resource.clone_registry();
-    let block_registry = br_arc.read();
-
     chunk_query.iter_mut()
         .for_each(|(entity, mut mesh_list, ChunkPosition(pos), mut task)| {
             if let Some(new_meshes) = future::block_on(future::poll_once(&mut task.0)) {
@@ -129,20 +127,19 @@ fn finish_remeshing_tasks(
                 }
 
                 for (bid, mesh) in new_meshes {
-                    if let Some(mat) = block_registry.material_from_id(&bid) {
-                        let e = commands
-                            .spawn(PbrBundle {
-                                mesh: mesh_assets.add(mesh),
-                                material: mat.clone(),
-                                ..default()
-                            })
-                            .insert(WorldPosition::from_xyz(
-                                (32 * pos.x) as f64,
-                                (32 * pos.y) as f64,
-                                (32 * pos.z) as f64,
-                            )).id();
-                        mesh_list.0.push(e);
-                    }
+                    let mat = block_materials.get_material(asset_server.as_ref(), material_assets.as_mut(), &universe, bid, 0,);
+                    let e = commands
+                        .spawn(PbrBundle {
+                            mesh: mesh_assets.add(mesh),
+                            material: mat.clone(),
+                            ..default()
+                        })
+                        .insert(WorldPosition::from_xyz(
+                            (32 * pos.x) as f64,
+                            (32 * pos.y) as f64,
+                            (32 * pos.z) as f64,
+                        )).id();
+                    mesh_list.0.push(e);
                 }
 
                 // update the mesh list

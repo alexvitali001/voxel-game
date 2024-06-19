@@ -1,13 +1,11 @@
-use crate::block::blockregistry::BlockRegistry;
+use crate::world::universe::Universe;
 use noise::NoiseFn;
 use noise::Perlin;
 use bevy::prelude::{Component, IVec3};
 
-use {
-    zerocopy::{
+use zerocopy::{
         AsBytes, FromBytes, FromZeroes
-    },
-};
+    };
 
 pub const CHUNK_SIZE: usize = 32;
 pub const CHUNK_SIZE_I32: i32 = CHUNK_SIZE as i32;
@@ -40,7 +38,7 @@ impl Chunk {
     }
 
     pub fn generate_chunk(
-        registry: &BlockRegistry,
+        u: &Universe,
         coords: IVec3,
     ) -> Chunk {
         let noise = Perlin::new(0);
@@ -49,8 +47,8 @@ impl Chunk {
         let chunk_y = coords[1];
         let chunk_z = coords[2];
 
-        let stone = registry.id_from_name(String::from("stone")).unwrap();
-        let dirt = registry.id_from_name(String::from("dirt")).unwrap();
+        let stone = u.block_id_from_name(String::from("stone"));
+        let dirt = u.block_id_from_name(String::from("dirt"));
         for relative_x in 0..CHUNK_SIZE_I32 {
             for relative_z in 0..CHUNK_SIZE_I32 {
                 // get world coordinates of this column

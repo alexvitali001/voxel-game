@@ -2,8 +2,7 @@ mod debugtext;
 mod player;
 mod position;
 mod world;
-mod block;
-mod registryresource;
+mod chunk;
 
 use bevy::window::PrimaryWindow;
 use bevy::{
@@ -23,14 +22,11 @@ use bevy::{
     color::palettes::basic::SILVER,
     color::palettes::css::ALICE_BLUE
 };
-use block::basicblock::BlockMaterial;
-use block::blockregistry::BlockRegistry;
-use block_mesh::VoxelVisibility;
-use world::chunkmap::ChunkMap;
-use registryresource::RegistryResource;
+use world::universe::Universe;
+use world::block_materials::BlockMaterials;
+use world::block::*;
 use world::gen::{ChunkEventsPlugin, GenerateChunkEvent, ChunkRemeshEvent};
 
-use crate::block::basicblock::BasicBlock;
 use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 
@@ -50,8 +46,8 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(image_plugin))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
-        .insert_resource(RegistryResource::new(BlockRegistry::new()))
-        .insert_resource(ChunkMap::new())
+        .insert_resource(BlockMaterials::new())
+        .insert_resource(Universe::new())
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(Update, translate_all_world_transforms)
@@ -66,35 +62,21 @@ fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
 }
 
 fn build_block_registry(
-    asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    block_registry_resource: ResMut<RegistryResource<BlockRegistry>>,
+    universe: Res<Universe>,
 ) {
-    let br = block_registry_resource.clone_registry();
-    let mut block_registry = br.write();
-    block_registry.register_block(
-        &mut materials,
-        BasicBlock {
-            name: String::from("air"),
-            mesh_visibility: VoxelVisibility::Empty,
-            material_type: BlockMaterial::Empty,
-        },
-    );
-
-    block_registry.register_block(
-        &mut materials,
-        BasicBlock {
+    // do not register air here, the universe init handles that automatically to ensure air is always id 0
+    universe.register_block(
+        BlockData {
             name: String::from("stone"),
-            mesh_visibility: VoxelVisibility::Opaque,
-            material_type: BlockMaterial::Solid(asset_server.load("textures/block/stone.png")),
+            block_type: BlockType::OpaqueSolid,
+            texture_file: String::from("textures/block/stone.png")
         },
     );
-    block_registry.register_block(
-        &mut materials,
-        BasicBlock {
+    universe.register_block(
+        BlockData {
             name: String::from("dirt"),
-            mesh_visibility: VoxelVisibility::Opaque,
-            material_type: BlockMaterial::Solid(asset_server.load("textures/block/dirt.png")),
+            block_type: BlockType::OpaqueSolid,
+            texture_file: String::from("textures/block/dirt.png")
         },
     );
 }
@@ -152,17 +134,22 @@ fn setup(
     // test chunk
 
     const GEN_RADIUS: i32 = 20;
+    const DO_GENERATION: bool = false;
     println!("making chunks");
     for x in -GEN_RADIUS..=GEN_RADIUS {
         for z in -GEN_RADIUS..=GEN_RADIUS {
             for y in -1..=0 {
                 let coords = IVec3::new(x,y,z);
-                //ev_gen.send(GenerateChunkEvent(IVec3::new(x,y,z)));
-                let ent = commands.spawn_empty()
+                if DO_GENERATION {
+                    ev_gen.send(GenerateChunkEvent(coords));
+                } else {
+                    let ent = commands.spawn_empty()
                     .insert(ChunkPosition(coords))
                     .insert(ChunkMeshList(Vec::new()))
                     .id();
-                ev_remesh.send(ChunkRemeshEvent(coords, ent));
+                    ev_remesh.send(ChunkRemeshEvent(coords, ent));
+                }
+
             }
         }
     }
