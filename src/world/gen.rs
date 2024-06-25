@@ -3,12 +3,10 @@ use std::collections::HashMap;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::tasks::*;
-use crate::chunk;
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
 use crate::chunk::mesh::bake;
 use crate::WorldPosition;
-use futures_lite::future;
 use zerocopy::FromBytes;
 use super::universe::Universe;
 use super::block_materials::BlockMaterials;
@@ -41,7 +39,7 @@ fn on_generate_chunk(
 
     for ev in ev_gen.read() {
         let coords = ev.0;
-        // println!("generating {} {} {}", coords.x, coords.y, coords.z);
+        // debug!("generating {} {} {}", coords.x, coords.y, coords.z);
         let u = (*universe.as_ref()).clone();
         commands.spawn(
             UngeneratedChunkBundle {
@@ -50,7 +48,7 @@ fn on_generate_chunk(
                 task: GenerateChunkTask(task_pool.spawn(async move {
                     let c = Chunk::generate_chunk(&u, coords);
                     u.flush_chunk(&coords, &c);
-                    // println!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
+                    // debug!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
                 }))});
     }
 }
@@ -61,7 +59,7 @@ fn finish_generating_tasks(
     mut ev_remesh: EventWriter<ChunkRemeshEvent>
 ) {
     chunk_query.iter_mut()
-        .for_each(|(entity, ChunkPosition(pos), mut task)| {
+        .for_each(|(entity, ChunkPosition(pos), task)| {
         if task.0.is_finished() {
             // delete the task and get the entity id
             let ce = commands.entity(entity)
@@ -96,12 +94,12 @@ fn on_chunk_remesh(
         let p = pos.clone();
         commands.entity(*e).insert(
             ChunkRemeshTask(task_pool.spawn(async move {
-                //println!("remeshing {} {} {}", p.x, p.y, p.z);
+                //debug!("remeshing {} {} {}", p.x, p.y, p.z);
                 let mm = bake(
                     &u,
                     Chunk::ref_from(c.as_ref()).unwrap()
                 );
-                println!("done remeshing {} {} {}", p.x, p.y, p.z);
+                debug!("done remeshing {} {} {}", p.x, p.y, p.z);
                 mm
             }))
         );
@@ -147,7 +145,7 @@ fn finish_remeshing_tasks(
                 
                 
             }
-            println!("rendering {} {} {}", pos.x, pos.y, pos.z);
+            debug!("rendering {} {} {}", pos.x, pos.y, pos.z);
             // update the mesh list
             commands.entity(entity).remove::<ChunkRemeshTask>();
         }
@@ -160,8 +158,8 @@ fn debug_bullshit(
 ) {
     q.iter().for_each(|x| {
         let pos = x.1.position;
-        println!("{} {} {}", pos.x, pos.y, pos.z);
-        println!("{:#?}", x.2);
+        debug!("{} {} {}", pos.x, pos.y, pos.z);
+        debug!("{:#?}", x.2);
     })
 }
 
