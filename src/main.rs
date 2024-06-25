@@ -56,7 +56,7 @@ fn main() {
         .insert_resource(Universe::new())
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
-        .add_systems(Update, translate_all_world_transforms)
+        .add_systems(PostUpdate, translate_all_world_transforms)
         .run();
 }
 

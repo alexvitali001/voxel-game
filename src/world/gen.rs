@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
-use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::tasks::*;
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
 use crate::chunk::mesh::bake;
-use crate::player::ThisPlayer;
 use crate::WorldPosition;
 use zerocopy::FromBytes;
 use super::universe::Universe;
@@ -114,10 +112,10 @@ fn finish_remeshing_tasks(
     mut material_assets: ResMut<Assets<StandardMaterial>>,
     mut block_materials: ResMut<BlockMaterials>,
     universe: Res<Universe>,
-    player: Query<&WorldPosition, With<ThisPlayer>>,
+    //player: Query<&WorldPosition, With<ThisPlayer>>,
     asset_server: Res<AssetServer>,
 ) {
-    let pwp = player.single();
+    //let pwp = player.single();
     chunk_query.iter_mut()
         .for_each(|(entity, mut mesh_list, ChunkPosition(pos), mut task)| {
             if let Some(new_meshes) = block_on(poll_once(&mut task.0)) {
@@ -131,21 +129,18 @@ fn finish_remeshing_tasks(
 
                 for (bid, mesh) in new_meshes {
                     let mat = block_materials.get_material(asset_server.as_ref(), material_assets.as_mut(), &universe, bid, 0,);
-                    let mut trans = Transform::from_xyz(32.0 * pos.x as f32, 32.0 * pos.y as f32, 32.0 * pos.z as f32);
-                    let wp = WorldPosition::from_xyz(
-                        (32 * pos.x) as f64,
-                        (32 * pos.y) as f64,
-                        (32 * pos.z) as f64,
-                    );
-                    wp.to_render_transform(pwp, &mut trans);
+                    //wp.to_render_transform(pwp, &mut trans);
                     let e = commands
                         .spawn(PbrBundle {
                             mesh: mesh_assets.add(mesh),
                             material: mat.clone(),
-                            transform: trans,
                             ..default()
                         })
-                        .insert(wp).id();
+                        .insert(WorldPosition::from_xyz(
+                            (32 * pos.x) as f64,
+                            (32 * pos.y) as f64,
+                            (32 * pos.z) as f64,
+                        )).id();
                     mesh_list.0.push(e);
                 }
                 // update the mesh list
