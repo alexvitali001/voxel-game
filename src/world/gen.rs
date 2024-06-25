@@ -121,7 +121,8 @@ fn finish_remeshing_tasks(
 ) {
     let (mut chunk_query, mut commands, mut mesh_assets, mut material_assets, mut block_materials, universe, asset_server) = sys_state.get_mut(world);
     for (entity, mut mesh_list, ChunkPosition(pos), mut task) in chunk_query.iter_mut() {
-        if let Some(new_meshes) = future::block_on(future::poll_once(&mut task.0)) {
+        if task.0.is_finished() {
+            let new_meshes = future::block_on(future::poll_once(&mut task.0)).expect("Task guaranteed to be finished");
             // delete all previous meshes
             // does despawning the entity automatically unload the mesh asset in Assets<Mesh>?
             // is that something we need to worry about?
