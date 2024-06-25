@@ -62,14 +62,13 @@ fn finish_generating_tasks(
 ) {
     chunk_query.iter_mut()
         .for_each(|(entity, ChunkPosition(pos), mut task)| {
-        if let Some(_) = future::block_on(future::poll_once(&mut task.0)) {
-            // write the chunk to the database
-
-            // add the chunk data to the chunk component and delete the task that generated it
+        if task.0.is_finished() {
+            // delete the task and get the entity id
             let ce = commands.entity(entity)
                     .remove::<GenerateChunkTask>()
                     .id();
 
+            // fire remesh event
             ev_remesh.send(ChunkRemeshEvent(*pos, ce));
             
         }
