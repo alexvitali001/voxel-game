@@ -18,13 +18,13 @@ pub struct PlayerBundle {
 
 fn init_this_player(mut commands: Commands) {
     let camera_bundle = Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 400., 12.0).looking_at(Vec3::new(0., 0., 12.), Vec3::Z),
+        transform: Transform::from_xyz(0.0, 6.0, 12.0).looking_at(Vec3::new(0., 0., 12.), Vec3::Z),
         ..default()
     };
 
     let player_bundle = PlayerBundle {
         _p: Player,
-        world_position: WorldPosition::from_xyz(0.0, 400.0, 12.0),
+        world_position: WorldPosition::from_xyz(0.0, 6.0, 12.0),
     };
     commands.spawn((camera_bundle, player_bundle, ThisPlayer));
 }

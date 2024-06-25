@@ -47,7 +47,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins.set(image_plugin).set(LogPlugin {
-            level: Level::DEBUG, ..default()
+            level: Level::INFO, ..default()
         }).set(RenderPlugin {
             synchronous_pipeline_compilation: true, ..default()
         }))

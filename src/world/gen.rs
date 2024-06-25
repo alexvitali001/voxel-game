@@ -6,6 +6,7 @@ use bevy::tasks::*;
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
 use crate::chunk::mesh::bake;
+use crate::player::ThisPlayer;
 use crate::WorldPosition;
 use zerocopy::FromBytes;
 use super::universe::Universe;
@@ -91,7 +92,7 @@ fn on_chunk_remesh(
     for ChunkRemeshEvent(pos, e) in ev_remesh.read() {
         let u = (*universe.as_ref()).clone();
         let c = u.fetch_chunk_exists(pos);
-        let p = pos.clone();
+        //let p = pos.clone();
         commands.entity(*e).insert(
             ChunkRemeshTask(task_pool.spawn(async move {
                 //debug!("remeshing {} {} {}", p.x, p.y, p.z);
@@ -107,50 +108,50 @@ fn on_chunk_remesh(
 }
 
 fn finish_remeshing_tasks(
-    world: &mut World,
-    sys_state: &mut SystemState<(Query<(Entity, &mut ChunkMeshList, &ChunkPosition, &mut ChunkRemeshTask)>,
-    Commands,
-    ResMut<Assets<Mesh>>,
-    ResMut<Assets<StandardMaterial>>,
-    ResMut<BlockMaterials>,
-    Res<Universe>,
-    Res<AssetServer>)>
+    mut chunk_query: Query<(Entity, &mut ChunkMeshList, &ChunkPosition, &mut ChunkRemeshTask)>,
+    mut commands: Commands,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+    mut block_materials: ResMut<BlockMaterials>,
+    universe: Res<Universe>,
+    player: Query<&WorldPosition, With<ThisPlayer>>,
+    asset_server: Res<AssetServer>,
 ) {
-    let (mut chunk_query, mut commands, mut mesh_assets, mut material_assets, mut block_materials, universe, asset_server) = sys_state.get_mut(world);
-    for (entity, mut mesh_list, ChunkPosition(pos), mut task) in chunk_query.iter_mut() {
-        if task.0.is_finished() {
-            let new_meshes = block_on(poll_once(&mut task.0)).unwrap();
-            // delete all previous meshes
-            // does despawning the entity automatically unload the mesh asset in Assets<Mesh>?
-            // is that something we need to worry about?
-            // if unloading isnt automatic, this leaks memory. Too Bad!
-            for m in mesh_list.0.drain(..) {
-                commands.entity(m).despawn();
-            }
+    let pwp = player.single();
+    chunk_query.iter_mut()
+        .for_each(|(entity, mut mesh_list, ChunkPosition(pos), mut task)| {
+            if let Some(new_meshes) = block_on(poll_once(&mut task.0)) {
+                // delete all previous meshes
+                // does despawning the entity automatically unload the mesh asset in Assets<Mesh>?
+                // is that something we need to worry about?
+                // if unloading isnt automatic, this leaks memory. Too Bad!
+                for m in mesh_list.0.drain(..) {
+                    commands.entity(m).despawn();
+                }
 
-            for (bid, mesh) in new_meshes {
-                let mat = block_materials.get_material(asset_server.as_ref(), material_assets.as_mut(), &universe, bid, 0,);
-                let mesh = mesh_assets.add(mesh);
-                let e = commands.spawn(PbrBundle {
-                    mesh,
-                    material: mat,
-                    ..default()
-                })
-                .insert(WorldPosition::from_xyz(
-                    (32 * pos.x) as f64,
-                    (32 * pos.y) as f64,
-                    (32 * pos.z) as f64,
-                )).id();
-                mesh_list.0.push(e);
-                
-                
+                for (bid, mesh) in new_meshes {
+                    let mat = block_materials.get_material(asset_server.as_ref(), material_assets.as_mut(), &universe, bid, 0,);
+                    let mut trans = Transform::from_xyz(32.0 * pos.x as f32, 32.0 * pos.y as f32, 32.0 * pos.z as f32);
+                    let wp = WorldPosition::from_xyz(
+                        (32 * pos.x) as f64,
+                        (32 * pos.y) as f64,
+                        (32 * pos.z) as f64,
+                    );
+                    wp.to_render_transform(pwp, &mut trans);
+                    let e = commands
+                        .spawn(PbrBundle {
+                            mesh: mesh_assets.add(mesh),
+                            material: mat.clone(),
+                            transform: trans,
+                            ..default()
+                        })
+                        .insert(wp).id();
+                    mesh_list.0.push(e);
+                }
+                // update the mesh list
+                commands.entity(entity).remove::<ChunkRemeshTask>();
             }
-            // debug!("rendering {} {} {}", pos.x, pos.y, pos.z);
-            // update the mesh list
-            commands.entity(entity).remove::<ChunkRemeshTask>();
-        }
-    }
-    sys_state.apply(world);
+        })
 }
 
 fn debug_bullshit(
