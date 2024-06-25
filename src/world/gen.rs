@@ -99,7 +99,7 @@ fn on_chunk_remesh(
                     &u,
                     Chunk::ref_from(c.as_ref()).unwrap()
                 );
-                debug!("done remeshing {} {} {}", p.x, p.y, p.z);
+                // debug!("done remeshing {} {} {}", p.x, p.y, p.z);
                 mm
             }))
         );
@@ -145,7 +145,7 @@ fn finish_remeshing_tasks(
                 
                 
             }
-            debug!("rendering {} {} {}", pos.x, pos.y, pos.z);
+            // debug!("rendering {} {} {}", pos.x, pos.y, pos.z);
             // update the mesh list
             commands.entity(entity).remove::<ChunkRemeshTask>();
         }
@@ -158,8 +158,8 @@ fn debug_bullshit(
 ) {
     q.iter().for_each(|x| {
         let pos = x.1.position;
-        debug!("{} {} {}", pos.x, pos.y, pos.z);
-        debug!("{:#?}", x.2);
+        trace!("position {} {} {}", pos.x, pos.y, pos.z);
+        trace!("{:#?}", x.2);
     })
 }
 
