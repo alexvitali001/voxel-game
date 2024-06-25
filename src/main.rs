@@ -4,6 +4,7 @@ mod position;
 mod world;
 mod chunk;
 
+use bevy::render::pipelined_rendering::PipelinedRenderingPlugin;
 use bevy::window::PrimaryWindow;
 use bevy::{
     asset::Assets,
@@ -31,7 +32,7 @@ use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 
 use position::*;
-use crate::world::gen::{ChunkMeshList, ChunkPosition, GenerateChunkTask};
+use crate::world::gen::{ChunkMeshList, ChunkPosition};
 
 fn main() {
     let image_plugin = ImagePlugin {
