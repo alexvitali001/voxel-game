@@ -5,7 +5,6 @@ mod world;
 mod chunk;
 
 use bevy::log::{Level, LogPlugin};
-use bevy::render::RenderPlugin;
 use bevy::window::PrimaryWindow;
 use bevy::{
     asset::Assets,
@@ -47,9 +46,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins.set(image_plugin).set(LogPlugin {
-            level: Level::INFO, ..default()
-        }).set(RenderPlugin {
-            synchronous_pipeline_compilation: true, ..default()
+            level: Level::DEBUG, ..default()
         }))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
         .insert_resource(BlockMaterials::new())

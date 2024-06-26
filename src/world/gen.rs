@@ -98,7 +98,7 @@ fn on_chunk_remesh(
                     &u,
                     Chunk::ref_from(c.as_ref()).unwrap()
                 );
-                // debug!("done remeshing {} {} {}", p.x, p.y, p.z);
+                debug!("done remeshing {} {} {}", p.x, p.y, p.z);
                 mm
             }))
         );
@@ -146,12 +146,7 @@ fn finish_remeshing_tasks(
                 // update the mesh list
                 commands.entity(entity).remove::<ChunkRemeshTask>();
             }
-            //println!("rendering {} {} {}", pos.x, pos.y, pos.z);
-            // update the mesh list
-            commands.entity(entity).remove::<ChunkRemeshTask>();
-        }
-    }
-    sys_state.apply(world);
+        })
 }
 
 #[derive(Component)]
