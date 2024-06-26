@@ -13,7 +13,6 @@ use std::env;
 use std::sync::Arc;
 use std::collections::HashMap;
 use sled::IVec;
-use sled::MergeOperator;
 
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 

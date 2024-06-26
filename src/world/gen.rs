@@ -1,14 +1,11 @@
 use std::collections::HashMap;
 
-use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use bevy::tasks::*;
-use crate::chunk;
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
 use crate::chunk::mesh::bake;
 use crate::WorldPosition;
-use futures_lite::future;
 use zerocopy::FromBytes;
 use super::universe::Universe;
 use super::block_materials::BlockMaterials;
@@ -41,7 +38,7 @@ fn on_generate_chunk(
 
     for ev in ev_gen.read() {
         let coords = ev.0;
-        // println!("generating {} {} {}", coords.x, coords.y, coords.z);
+        // debug!("generating {} {} {}", coords.x, coords.y, coords.z);
         let u = (*universe.as_ref()).clone();
         commands.spawn(
             UngeneratedChunkBundle {
@@ -50,7 +47,7 @@ fn on_generate_chunk(
                 task: GenerateChunkTask(task_pool.spawn(async move {
                     let c = Chunk::generate_chunk(&u, coords);
                     u.flush_chunk(&coords, &c);
-                    // println!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
+                    // debug!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
                 }))});
     }
 }
@@ -61,15 +58,14 @@ fn finish_generating_tasks(
     mut ev_remesh: EventWriter<ChunkRemeshEvent>
 ) {
     chunk_query.iter_mut()
-        .for_each(|(entity, ChunkPosition(pos), mut task)| {
-        if let Some(_) = future::block_on(future::poll_once(&mut task.0)) {
-            // write the chunk to the database
-
-            // add the chunk data to the chunk component and delete the task that generated it
+        .for_each(|(entity, ChunkPosition(pos), task)| {
+        if task.0.is_finished() {
+            // delete the task and get the entity id
             let ce = commands.entity(entity)
                     .remove::<GenerateChunkTask>()
                     .id();
 
+            // fire remesh event
             ev_remesh.send(ChunkRemeshEvent(*pos, ce));
             
         }
@@ -97,12 +93,12 @@ fn on_chunk_remesh(
         //let p = pos.clone();
         commands.entity(*e).insert(
             ChunkRemeshTask(task_pool.spawn(async move {
-                //println!("remeshing {} {} {}", p.x, p.y, p.z);
+                //debug!("remeshing {} {} {}", p.x, p.y, p.z);
                 let mm = bake(
                     &u,
                     Chunk::ref_from(c.as_ref()).unwrap()
                 );
-                //println!("done remeshing {} {} {}", p.x, p.y, p.z);
+                // debug!("done remeshing {} {} {}", p.x, p.y, p.z);
                 mm
             }))
         );
@@ -110,41 +106,45 @@ fn on_chunk_remesh(
 }
 
 fn finish_remeshing_tasks(
-    world: &mut World,
-    sys_state: &mut SystemState<(Query<(Entity, &mut ChunkMeshList, &ChunkPosition, &mut ChunkRemeshTask)>,
-    Commands,
-    ResMut<Assets<Mesh>>,
-    ResMut<Assets<StandardMaterial>>,
-    ResMut<BlockMaterials>,
-    Res<Universe>,
-    Res<AssetServer>)>
+    mut chunk_query: Query<(Entity, &mut ChunkMeshList, &ChunkPosition, &mut ChunkRemeshTask)>,
+    mut commands: Commands,
+    mut mesh_assets: ResMut<Assets<Mesh>>,
+    mut material_assets: ResMut<Assets<StandardMaterial>>,
+    mut block_materials: ResMut<BlockMaterials>,
+    universe: Res<Universe>,
+    //player: Query<&WorldPosition, With<ThisPlayer>>,
+    asset_server: Res<AssetServer>,
 ) {
-    let (mut chunk_query, mut commands, mut mesh_assets, mut material_assets, mut block_materials, universe, asset_server) = sys_state.get_mut(world);
-    for (entity, mut mesh_list, ChunkPosition(pos), mut task) in chunk_query.iter_mut() {
-        if task.0.is_finished() {
-            let new_meshes = future::block_on(future::poll_once(&mut task.0)).expect("Task guaranteed to be finished");
-            // delete all previous meshes
-            // does despawning the entity automatically unload the mesh asset in Assets<Mesh>?
-            // is that something we need to worry about?
-            // if unloading isnt automatic, this leaks memory. Too Bad!
-            for m in mesh_list.0.drain(..) {
-                commands.entity(m).despawn();
-            }
+    //let pwp = player.single();
+    chunk_query.iter_mut()
+        .for_each(|(entity, mut mesh_list, ChunkPosition(pos), mut task)| {
+            if let Some(new_meshes) = block_on(poll_once(&mut task.0)) {
+                // delete all previous meshes
+                // does despawning the entity automatically unload the mesh asset in Assets<Mesh>?
+                // is that something we need to worry about?
+                // if unloading isnt automatic, this leaks memory. Too Bad!
+                for m in mesh_list.0.drain(..) {
+                    commands.entity(m).despawn();
+                }
 
-            for (bid, mesh) in new_meshes {
-                let mat = block_materials.get_material(asset_server.as_ref(), material_assets.as_mut(), &universe, bid, 0,);
-                let e = commands
-                    .spawn(PbrBundle {
-                        mesh: mesh_assets.add(mesh),
-                        material: mat,
-                        ..default()
-                    })
-                    .insert(WorldPosition::from_xyz(
-                        (32 * pos.x) as f64,
-                        (32 * pos.y) as f64,
-                        (32 * pos.z) as f64,
-                    )).id();
-                mesh_list.0.push(e);
+                for (bid, mesh) in new_meshes {
+                    let mat = block_materials.get_material(asset_server.as_ref(), material_assets.as_mut(), &universe, bid, 0,);
+                    //wp.to_render_transform(pwp, &mut trans);
+                    let e = commands
+                        .spawn(PbrBundle {
+                            mesh: mesh_assets.add(mesh),
+                            material: mat.clone(),
+                            ..default()
+                        })
+                        .insert(WorldPosition::from_xyz(
+                            (32 * pos.x) as f64,
+                            (32 * pos.y) as f64,
+                            (32 * pos.z) as f64,
+                        )).id();
+                    mesh_list.0.push(e);
+                }
+                // update the mesh list
+                commands.entity(entity).remove::<ChunkRemeshTask>();
             }
             //println!("rendering {} {} {}", pos.x, pos.y, pos.z);
             // update the mesh list
