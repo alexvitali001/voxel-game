@@ -146,7 +146,7 @@ fn finish_remeshing_tasks(
                     )).id();
                 mesh_list.0.push(e);
             }
-            println!("rendering {} {} {}", pos.x, pos.y, pos.z);
+            //println!("rendering {} {} {}", pos.x, pos.y, pos.z);
             // update the mesh list
             commands.entity(entity).remove::<ChunkRemeshTask>();
         }
@@ -159,7 +159,9 @@ pub struct ChunkEventsPlugin;
 
 impl Plugin for ChunkEventsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, ((finish_remeshing_tasks,on_chunk_remesh).chain(), (finish_generating_tasks, on_generate_chunk).chain()))
+        app.add_systems(Update, (
+                (finish_remeshing_tasks,on_chunk_remesh).chain(), 
+                (finish_generating_tasks, on_generate_chunk).chain()))
            .add_event::<GenerateChunkEvent>()
            .add_event::<ChunkRemeshEvent>();
     }

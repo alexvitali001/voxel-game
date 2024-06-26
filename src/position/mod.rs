@@ -1,6 +1,6 @@
 use crate::player::ThisPlayer;
 use bevy::{math::f64::DVec3, prelude::*};
-#[derive(Default, Component)]
+#[derive(Default, Debug, Component)]
 pub struct WorldPosition {
     pub position: DVec3,
     pub pitch: f32,
