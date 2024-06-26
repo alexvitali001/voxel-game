@@ -4,6 +4,7 @@ mod position;
 mod world;
 mod chunk;
 
+use bevy::log::{Level, LogPlugin};
 use bevy::window::PrimaryWindow;
 use bevy::{
     asset::Assets,
@@ -31,7 +32,7 @@ use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 
 use position::*;
-use crate::world::gen::{ChunkMeshList, ChunkPosition, GenerateChunkTask};
+use crate::world::gen::{ChunkMeshList, ChunkPosition};
 
 fn main() {
     let image_plugin = ImagePlugin {
@@ -44,13 +45,15 @@ fn main() {
     };
 
     App::new()
-        .add_plugins(DefaultPlugins.set(image_plugin))
+        .add_plugins(DefaultPlugins.set(image_plugin).set(LogPlugin {
+            level: Level::INFO, ..default()
+        }))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
         .insert_resource(BlockMaterials::new())
         .insert_resource(Universe::new())
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
-        .add_systems(Update, translate_all_world_transforms)
+        .add_systems(PostUpdate, translate_all_world_transforms)
         .run();
 }
 
@@ -134,7 +137,7 @@ fn setup(
     // test chunk
 
     const GEN_RADIUS: i32 = 20;
-    const DO_GENERATION: bool = false;
+    const DO_GENERATION: bool = true;
     println!("making chunks");
     for x in -GEN_RADIUS..=GEN_RADIUS {
         for z in -GEN_RADIUS..=GEN_RADIUS {
