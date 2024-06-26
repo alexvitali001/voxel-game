@@ -98,7 +98,7 @@ fn on_chunk_remesh(
                     &u,
                     Chunk::ref_from(c.as_ref()).unwrap()
                 );
-                debug!("done remeshing {} {} {}", p.x, p.y, p.z);
+                //debug!("done remeshing {} {} {}", p.x, p.y, p.z);
                 mm
             }))
         );

@@ -46,7 +46,7 @@ fn main() {
 
     App::new()
         .add_plugins(DefaultPlugins.set(image_plugin).set(LogPlugin {
-            level: Level::DEBUG, ..default()
+            level: Level::INFO, ..default()
         }))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
         .insert_resource(BlockMaterials::new())
