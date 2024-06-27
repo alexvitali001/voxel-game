@@ -23,10 +23,6 @@ pub fn generate_chunk(
             
             let top = u.dimension_noise.get_cont(x, z) as i32;
 
-            if top >= (chunk_y + 1) * CHUNK_SIZE_I32 {
-                continue;
-            }
-
             // shitty impl, will hopefully eventually be density based
             for relative_y in 0..CHUNK_SIZE_I32 {
                 let y = chunk_y * CHUNK_SIZE_I32 + relative_y;
