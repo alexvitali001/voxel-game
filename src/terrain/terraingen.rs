@@ -1,6 +1,5 @@
 use bevy_math::IVec3;
 
-use super::noise::*;
 use crate::chunk::chunk::*;
 use crate::world::universe::Universe;
 
