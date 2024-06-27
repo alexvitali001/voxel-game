@@ -1,5 +1,6 @@
 use crate::player::ThisPlayer;
 use crate::position::WorldPosition;
+use crate::world::universe::Universe;
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -34,6 +35,7 @@ fn update_debug_text(
     mut text_query: Query<&mut Text, With<DebugText>>,
     player_query: Query<&WorldPosition, With<ThisPlayer>>,
     diagnostics: Res<DiagnosticsStore>,
+    universe: Res<Universe>
 ) {
     let mut text = text_query.single_mut();
 
@@ -52,8 +54,9 @@ fn update_debug_text(
     text.sections[0].value = format!(
         "X={:.5}, Y={:.5}, Z={:.5}
             \nPitch={:.1}, Yaw={:.1}
-            \nFPS={:.1}",
-        pos.x, pos.y, pos.z, pitch, yaw, fps
+            \nFPS={:.1}
+            \nContinentalness={:.1}",
+        pos.x, pos.y, pos.z, pitch, yaw, fps, universe.dimension_noise.get_cont(pos.x as i32, pos.z as i32)
     );
 }
 
