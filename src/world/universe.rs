@@ -116,6 +116,21 @@ impl Universe {
             .expect("there should be a chunk")
     }
 
+    pub fn chunk_generated(
+        &self,
+        coords: &IVec3
+    ) -> bool {
+        let coords = Coords {
+            x: coords.x,
+            y: coords.y,
+            z: coords.z
+        };
+        let dim = self.dimension("overworld");
+        let key = coords.as_bytes();
+        dim.contains_key(key)
+            .expect("Sled DB failed to query for existence of key")
+    }
+
     // BLOCK REGISTRY THINGS
     pub fn register_block(&self, block : BlockData) {
         let mut id_map = self.block_registry_idmap.write();

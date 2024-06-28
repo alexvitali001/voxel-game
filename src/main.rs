@@ -91,9 +91,7 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut ambient_light: ResMut<AmbientLight>,
-    mut ev_gen : EventWriter<GenerateChunkEvent>,
-    mut ev_remesh: EventWriter<ChunkRemeshEvent>
+    mut ambient_light: ResMut<AmbientLight>
 ) {
     let debug_texture = asset_server.load("textures/block/debug.png");
     let debug_material = materials.add(StandardMaterial {
@@ -125,38 +123,6 @@ fn setup(
             ..default()
         })
         .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
-
-    // ground plane
-    commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Plane3d::default().mesh().size(50.0, 50.0)),
-            material: materials.add(Color::Srgba(SILVER)),
-            ..default()
-        })
-        .insert(WorldPosition::from_xyz(0.0, -100.0, 0.0));
-
-    // test chunk
-
-    const GEN_RADIUS: i32 = 8;
-    const DO_GENERATION: bool = true;
-    println!("making chunks");
-    for x in -GEN_RADIUS..=GEN_RADIUS {
-        for z in -GEN_RADIUS..=GEN_RADIUS {
-            for y in -1..=0 {
-                let coords = IVec3::new(x,y,z);
-                if DO_GENERATION {
-                    ev_gen.send(GenerateChunkEvent(coords));
-                } else {
-                    let ent = commands.spawn_empty()
-                    .insert(ChunkPosition(coords))
-                    .insert(ChunkMeshList(Vec::new()))
-                    .id();
-                    ev_remesh.send(ChunkRemeshEvent(coords, ent));
-                }
-
-            }
-        }
-    }
 }
 
 #[allow(dead_code)]

@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::tasks::*;
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
+use crate::chunk::chunk::CHUNK_SIZE_I32;
 use crate::chunk::mesh::bake;
 use crate::WorldPosition;
 use zerocopy::FromBytes;
@@ -149,6 +150,105 @@ fn finish_remeshing_tasks(
             }
         })
 }
+#[derive(Event)]
+pub struct LoadChunkEvent(pub IVec3);
+
+fn on_load_chunk(
+    mut ev_load : EventReader<LoadChunkEvent>,
+    mut ev_remesh: EventWriter<ChunkRemeshEvent>,
+    mut ev_gen: EventWriter<GenerateChunkEvent>,
+    mut commands : Commands,
+    universe: Res<Universe>
+) {
+    for ev in ev_load.read() {
+        let coords = ev.0;
+        if universe.chunk_generated(&coords) {
+            // if the chunk was already generated, just spawn the entity and send a remesh event
+            let e = commands.spawn((
+                ChunkPosition(coords),
+                ChunkMeshList(vec![])
+            )).id();
+            ev_remesh.send(ChunkRemeshEvent(coords, e));
+        } else {
+            // if not, send a generate event
+            ev_gen.send(GenerateChunkEvent(coords));
+        }
+    }
+}
+
+#[derive(Event)]
+pub struct UnloadChunkEvent(pub Entity);
+
+fn on_unload_chunk(
+    mut ev_unload : EventReader<UnloadChunkEvent>,
+    mut commands : Commands,
+    mesh_list_q:  Query<&ChunkMeshList>
+) {
+    for ev in ev_unload.read() { 
+        // TODO: We should probably use bevy's builtin parent-child relationship here to child the meshes to the "Loaded Chunk" entity
+        // that would probably make this less cumbersome. and a lot of the shit in this file really.
+
+        let e = ev.0;
+        for m in &mesh_list_q.get(e).unwrap().0 {
+            // delete all the meshes
+            commands.entity(*m).despawn();
+        }
+        commands.entity(e).despawn(); 
+    }
+}
+
+const HORIZONTAL_RENDER_DISTANCE : i32 = 8;
+const VERTICAL_RENDER_DISTANCE : i32 = 8;
+use crate::player::*;
+use std::collections::HashSet;
+use std::cmp::max;
+fn chunk_loading_manager(
+    mut ev_load : EventWriter<LoadChunkEvent>,
+    mut ev_unload : EventWriter<UnloadChunkEvent>,
+    player_query: Query<&mut WorldPosition, With<ThisPlayer>>,
+    chunk_query: Query<(Entity, &ChunkPosition, Option<&ChunkRemeshTask>, Option<&GenerateChunkTask>)>
+                // we query the tasks so we can not avoid unloading chunks that have tasks on them
+                // because unloading chunks that are being generated/meshed seems Like A Bad Idea
+) {
+    let player_chunk = player_query.single().get_chunk_position();
+
+    let mut already_loaded : HashSet<IVec3> = HashSet::new();
+
+    // unload chunks that are too far away in any direction
+    for (e, pos, rt, gt) in &chunk_query {
+        if rt.is_some() || gt.is_some() {
+            // chunks with tasks are always considered "in bounds", so they aren't unloaded or loaded again
+            already_loaded.insert(pos.0); 
+        } else if (pos.0[1] - player_chunk[1]).abs() > VERTICAL_RENDER_DISTANCE {
+            info!("Unloading chunk {},{},{} (outside vertical render distance)", pos.0[0], pos.0[1], pos.0[2]);
+            ev_unload.send(UnloadChunkEvent(e));
+        } else if max( // using chebyshev distance for now
+                (pos.0[0] - player_chunk[0]).abs(), 
+                (pos.0[2] - player_chunk[2]).abs()
+            ) > HORIZONTAL_RENDER_DISTANCE { 
+                info!("Unloading chunk {},{},{} (outside horizontal render distance)", pos.0[0], pos.0[1], pos.0[2]);
+                ev_unload.send(UnloadChunkEvent(e));
+        } else {
+            // maintain a list of already loaded in-bound chunks so as not to reload them
+            // info!("Sparing chunk {},{},{}", pos.0[0], pos.0[1], pos.0[2]);
+            already_loaded.insert(pos.0);
+        }
+    }
+
+    // check if new chunks need to be loaded
+    // stupid dumb algorithm for doing this, in the future we want this to be a spiral to ensure the chunk you're in always goes into the task pool first
+    for dx in -HORIZONTAL_RENDER_DISTANCE..=HORIZONTAL_RENDER_DISTANCE {
+        for dz in -HORIZONTAL_RENDER_DISTANCE..=HORIZONTAL_RENDER_DISTANCE {
+            for dy in -VERTICAL_RENDER_DISTANCE..=VERTICAL_RENDER_DISTANCE {
+                let coords = IVec3::new(dx,dy,dz) + player_chunk;
+                if !already_loaded.contains(&coords) {
+                    info!("Loading chunk {},{},{}", coords[0], coords[1], coords[2]);
+                    ev_load.send(LoadChunkEvent(coords));
+                }
+            }
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct ChunkEventsPlugin;
@@ -156,9 +256,14 @@ pub struct ChunkEventsPlugin;
 impl Plugin for ChunkEventsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (
+                chunk_loading_manager,
+                (on_load_chunk, on_unload_chunk),
+                (finish_generating_tasks, on_generate_chunk).chain(),
                 (finish_remeshing_tasks,on_chunk_remesh).chain(), 
-                (finish_generating_tasks, on_generate_chunk).chain()))
+                ).chain())
            .add_event::<GenerateChunkEvent>()
-           .add_event::<ChunkRemeshEvent>();
+           .add_event::<ChunkRemeshEvent>()
+           .add_event::<LoadChunkEvent>()
+           .add_event::<UnloadChunkEvent>();
     }
 }

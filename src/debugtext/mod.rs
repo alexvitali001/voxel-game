@@ -44,6 +44,7 @@ fn update_debug_text(
     let pos = player_worldpos.position;
     let pitch = player_worldpos.pitch.to_degrees();
     let yaw = player_worldpos.yaw.to_degrees();
+    let player_chunk = player_worldpos.get_chunk_position();
 
     // Diagnostics
     let fps = diagnostics
@@ -52,11 +53,16 @@ fn update_debug_text(
         .smoothed()
         .unwrap_or_default();
     text.sections[0].value = format!(
-        "X={:.5}, Y={:.5}, Z={:.5}
+        "XYZ={:.5}, {:.5}, {:.5}
+            \nChunk={}, {}, {}
             \nPitch={:.1}, Yaw={:.1}
             \nFPS={:.1}
             \nContinentalness={:.1}",
-        pos.x, pos.y, pos.z, pitch, yaw, fps, universe.dimension_noise.get_cont(pos.x as i32, pos.z as i32)
+        pos.x, pos.y, pos.z, 
+        player_chunk[0], player_chunk[1], player_chunk[2],
+        pitch, yaw, 
+        fps, 
+        universe.dimension_noise.get_cont(pos.x as i32, pos.z as i32),
     );
 }
 
