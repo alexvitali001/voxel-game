@@ -2,6 +2,7 @@
 
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
+use crate::terrain::noise::DimensionNoise;
 use crate::world::block::BlockData;
 use crate::world::block::BlockType;
 use bevy::prelude::*;
@@ -27,6 +28,8 @@ pub struct Coords {
 #[derive(Resource, Clone)]
 pub struct Universe {
     db: sled::Db,
+    pub seed: u64,
+    pub dimension_noise : DimensionNoise,
     block_registry_idmap: Arc<RwLock<HashMap<String, BlockId>>>,
     block_registry_datamap: Arc<RwLock<HashMap<BlockId, Arc<BlockData>>>>
 }
@@ -46,6 +49,9 @@ impl Universe {
                 .compression_factor(5)
                 .mode(sled::Mode::HighThroughput)
                 .open().unwrap(),
+
+            seed: 0,
+            dimension_noise: DimensionNoise::new(0),
 
             block_registry_idmap: new_registry(),
             block_registry_datamap: new_registry()

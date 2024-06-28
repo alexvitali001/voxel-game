@@ -9,6 +9,7 @@ use crate::WorldPosition;
 use zerocopy::FromBytes;
 use super::universe::Universe;
 use super::block_materials::BlockMaterials;
+use crate::terrain::terraingen::generate_chunk;
 
 #[derive(Component)]
 pub struct ChunkPosition(pub IVec3);
@@ -45,9 +46,9 @@ fn on_generate_chunk(
                 chunk_position: ChunkPosition(coords),
                 meshes: ChunkMeshList(Vec::new()), 
                 task: GenerateChunkTask(task_pool.spawn(async move {
-                    let c = Chunk::generate_chunk(&u, coords);
+                    let c = generate_chunk(&u, coords);
                     u.flush_chunk(&coords, &c);
-                    // debug!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
+                    debug!("flushed chunk {} {} {}", coords.x, coords.y, coords.z);
                 }))});
     }
 }

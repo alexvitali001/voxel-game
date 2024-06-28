@@ -3,6 +3,7 @@ mod player;
 mod position;
 mod world;
 mod chunk;
+mod terrain;
 
 use bevy::log::{Level, LogPlugin};
 use bevy::window::PrimaryWindow;
@@ -136,7 +137,7 @@ fn setup(
 
     // test chunk
 
-    const GEN_RADIUS: i32 = 20;
+    const GEN_RADIUS: i32 = 8;
     const DO_GENERATION: bool = true;
     println!("making chunks");
     for x in -GEN_RADIUS..=GEN_RADIUS {
