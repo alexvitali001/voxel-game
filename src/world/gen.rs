@@ -219,12 +219,12 @@ fn chunk_loading_manager(
         if rt.is_some() || gt.is_some() {
             // chunks with tasks are always considered "in bounds", so they aren't unloaded or loaded again
             already_loaded.insert(pos.0); 
-        } else if (pos.0[1] - player_chunk[1]).abs() > VERTICAL_RENDER_DISTANCE {
+        } else if (pos.0.y - player_chunk.y).abs() > VERTICAL_RENDER_DISTANCE {
             info!("Unloading chunk {},{},{} (outside vertical render distance)", pos.0[0], pos.0[1], pos.0[2]);
             ev_unload.send(UnloadChunkEvent(e));
         } else if max( // using chebyshev distance for now
-                (pos.0[0] - player_chunk[0]).abs(), 
-                (pos.0[2] - player_chunk[2]).abs()
+                (pos.0.x - player_chunk.x).abs(), 
+                (pos.0.z - player_chunk.z).abs()
             ) > HORIZONTAL_RENDER_DISTANCE { 
                 info!("Unloading chunk {},{},{} (outside horizontal render distance)", pos.0[0], pos.0[1], pos.0[2]);
                 ev_unload.send(UnloadChunkEvent(e));
@@ -242,7 +242,7 @@ fn chunk_loading_manager(
             for dy in -VERTICAL_RENDER_DISTANCE..=VERTICAL_RENDER_DISTANCE {
                 let coords = IVec3::new(dx,dy,dz) + player_chunk;
                 if !already_loaded.contains(&coords) {
-                    info!("Loading chunk {},{},{}", coords[0], coords[1], coords[2]);
+                    info!("Loading chunk {},{},{}", coords.x, coords.y, coords.z);
                     ev_load.send(LoadChunkEvent(coords));
                 }
             }

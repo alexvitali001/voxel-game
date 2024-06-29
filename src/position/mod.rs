@@ -64,9 +64,9 @@ impl WorldPosition {
         // society when integer division rounds towards zero and not down and i have to do this
         let chunk_size = CHUNK_SIZE_I32 as f64;
         return IVec3::new(
-            (self.position[0] / chunk_size).floor() as i32,
-            (self.position[1] / chunk_size).floor() as i32,
-            (self.position[2] / chunk_size).floor() as i32
+            (self.position.x / chunk_size).floor() as i32,
+            (self.position.y / chunk_size).floor() as i32,
+            (self.position.z / chunk_size).floor() as i32
         )
     }
 }

@@ -59,7 +59,7 @@ fn update_debug_text(
             \nFPS={:.1}
             \nContinentalness={:.1}",
         pos.x, pos.y, pos.z, 
-        player_chunk[0], player_chunk[1], player_chunk[2],
+        player_chunk.x, player_chunk.y, player_chunk.z,
         pitch, yaw, 
         fps, 
         universe.dimension_noise.get_cont(pos.x as i32, pos.z as i32),
