@@ -62,7 +62,7 @@ fn update_debug_text(
         player_chunk.x, player_chunk.y, player_chunk.z,
         pitch, yaw, 
         fps, 
-        universe.dimension_noise.get_cont(pos.x as i32, pos.z as i32),
+        universe.dimension_noise.get_splined_cont(pos.x as i32, pos.z as i32),
     );
 }
 

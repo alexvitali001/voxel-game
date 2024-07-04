@@ -20,7 +20,7 @@ pub fn generate_chunk(
             let x = chunk_x * CHUNK_SIZE_I32 + relative_x;
             let z = chunk_z * CHUNK_SIZE_I32 + relative_z;
             
-            let top = u.dimension_noise.get_cont(x, z) as i32;
+            let top = u.dimension_noise.get_splined_cont(x, z) as i32;
 
             // shitty impl, will hopefully eventually be density based
             for relative_y in 0..CHUNK_SIZE_I32 {

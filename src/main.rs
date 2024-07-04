@@ -122,7 +122,7 @@ fn setup(
             },
             ..default()
         })
-        .insert(WorldPosition::from_xyz(8.0, 20.0, 8.0));
+        .insert(WorldPosition::from_xyz(8.0, 50.0, 8.0));
 }
 
 #[allow(dead_code)]

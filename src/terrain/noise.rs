@@ -1,3 +1,4 @@
+use bevy_math::Vec2;
 use libnoise::*;
 use super::libnoise_gens::*;
 use splines::{Interpolation, Key, Spline};
@@ -16,6 +17,8 @@ pub fn named_seed(useed: u64, name: &str) -> u64 {
 pub struct DimensionNoise {
     gen_cont : Arc<dyn Noise2 + Send + Sync>,
     gen_density : Arc<dyn Noise3 + Send + Sync>,
+
+    spline_cont : Arc<Spline<f64, f64>>
 }
 
 const SMOOTHNESS_FACTOR : f64 = 1.0 / 20.0;
@@ -25,8 +28,6 @@ impl DimensionNoise {
     pub fn new(useed: u64) -> DimensionNoise {
         let continentalness_generator = Source::simplex(named_seed(useed, "continentalness"))
             .fbm(5, 0.013, 2.0, 0.5)
-            .lambda(continentalness_spline)
-            .mul(HEIGHT_SCALE)
             .scale([SMOOTHNESS_FACTOR; 2]);
         
         // uncomment these two lines to make an image of the noise
@@ -39,9 +40,21 @@ impl DimensionNoise {
             .scale([SMOOTHNESS_FACTOR; 3]);
         
         
+        let spline_cont = Spline::from_vec(vec![
+            Key::new(-1.0, -1.0, Interpolation::Linear),
+            Key::new(-0.5, -0.9, Interpolation::Linear),
+            Key::new(-0.3, -0.2, Interpolation::Linear),
+            Key::new( 0.0,  0.2, Interpolation::Linear),
+            Key::new( 0.3,  0.4, Interpolation::Linear),
+            Key::new( 0.7,  0.9, Interpolation::Linear),
+            Key::new( 1.0,  1.0, Interpolation::Linear)
+        ]);
+
         DimensionNoise {
             gen_cont: Arc::new(continentalness_generator),
-            gen_density: Arc::new(density_generator)
+            gen_density: Arc::new(density_generator),
+
+            spline_cont: Arc::new(spline_cont)
         }
     }
 
@@ -49,19 +62,11 @@ impl DimensionNoise {
         self.gen_density.sample([x as f64, y as f64, z as f64])
     }
 
-    pub fn get_cont(&self, x : i32, z: i32) -> f64 {
+    pub fn get_raw_cont(&self, x : i32, z: i32) -> f64 {
         self.gen_cont.sample([x as f64, z as f64])
     }
-}
 
-fn continentalness_spline(c_raw: f64) -> f64 {
-    Spline::from_vec(vec![
-        Key::new(-1.0, -1.0, Interpolation::Linear),
-        Key::new(-0.5, -0.9, Interpolation::Linear),
-        Key::new(-0.3, -0.2, Interpolation::Linear),
-        Key::new( 0.0,  0.2, Interpolation::Linear),
-        Key::new( 0.3,  0.4, Interpolation::Linear),
-        Key::new( 0.7,  0.9, Interpolation::Linear),
-        Key::new( 1.0,  1.0, Interpolation::Linear)
-    ]).sample(c_raw).expect("Raw Continentalness outside [-1, 1]")
+    pub fn get_splined_cont(&self, x : i32, z: i32) -> f64 {
+        self.spline_cont.sample(self.get_raw_cont(x, z)).expect("Raw Continentalness outside [-1, 1]") * HEIGHT_SCALE
+    }
 }
