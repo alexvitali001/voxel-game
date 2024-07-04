@@ -18,14 +18,15 @@ pub struct DimensionNoise {
     gen_density : Arc<dyn Noise3 + Send + Sync>,
 }
 
-const SMOOTHNESS_FACTOR : f64 = 1.0;
+const SMOOTHNESS_FACTOR : f64 = 1.0 / 20.0;
 const DENSITY_SQUASH : f64 = 0.5;
+const HEIGHT_SCALE : f64 = 100.0;
 impl DimensionNoise {
     pub fn new(useed: u64) -> DimensionNoise {
         let continentalness_generator = Source::simplex(named_seed(useed, "continentalness"))
             .fbm(5, 0.013, 2.0, 0.5)
             .lambda(continentalness_spline)
-            .mul(25.0)
+            .mul(HEIGHT_SCALE)
             .scale([SMOOTHNESS_FACTOR; 2]);
         
         // uncomment these two lines to make an image of the noise

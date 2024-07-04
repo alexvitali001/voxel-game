@@ -2,6 +2,7 @@ use crate::position::WorldPosition;
 use bevy::input::mouse::MouseMotion;
 use bevy::math::f64::DVec3;
 use bevy::prelude::*;
+use bevy::render::view::{GpuCulling, NoCpuCulling};
 use bevy::window::CursorGrabMode;
 
 #[derive(Default, Component)]
@@ -28,7 +29,12 @@ fn init_this_player(mut commands: Commands) {
         _p: Player,
         world_position: world_position,
     };
-    commands.spawn((camera_bundle, player_bundle, ThisPlayer));
+    commands.spawn((camera_bundle, player_bundle, ThisPlayer,
+            // Enable GPU frustum culling (does not automatically disable CPU frustum culling).
+            GpuCulling,
+            // Disable CPU frustum culling.
+            NoCpuCulling
+    ));
 }
 
 fn camera_mover(
