@@ -56,22 +56,20 @@ fn camera_mover(
 
     // handle direction
     let mut worldpos = query.single_mut();
-    let forward = worldpos.forward();
-    let left = worldpos.left();
 
     let mut direction = DVec3::ZERO;
 
     if keys.pressed(KeyCode::KeyW) {
-        direction += forward;
+        direction += worldpos.forward();
     }
     if keys.pressed(KeyCode::KeyS) {
-        direction -= forward;
+        direction += worldpos.backward();
     }
     if keys.pressed(KeyCode::KeyA) {
-        direction += left;
+        direction += worldpos.left();
     }
     if keys.pressed(KeyCode::KeyD) {
-        direction -= left;
+        direction += worldpos.right();
     }
     if keys.pressed(KeyCode::Space) {
         direction += DVec3::Y;
@@ -111,8 +109,23 @@ fn camera_rotator(
     }
     let mouse_sensitivity = 0.005;
 
-    worldpos.add_pitch_clamp(mouse_vec.y * mouse_sensitivity);
-    worldpos.add_yaw(-mouse_vec.x * mouse_sensitivity);
+    worldpos.add_pitch_clamp(-mouse_vec.y * mouse_sensitivity);
+    worldpos.add_yaw(mouse_vec.x * mouse_sensitivity);
+}
+
+fn debug_rotation(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut camera_query: Query<(&ThisPlayer, &mut WorldPosition)>
+) {
+    let (_, mut worldpos) = camera_query.single_mut();
+
+    if keys.just_pressed(KeyCode::Digit0) {
+        worldpos.yaw = 0.0;
+    } else if keys.just_pressed(KeyCode::Minus) {
+        worldpos.add_yaw(-std::f32::consts::FRAC_PI_2);
+    } else if keys.just_pressed(KeyCode::Equal) {
+        worldpos.add_yaw(std::f32::consts::FRAC_PI_2);
+    }
 }
 
 #[derive(Component)]
@@ -121,6 +134,6 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init_this_player)
-            .add_systems(Update, (camera_mover, camera_rotator));
+            .add_systems(Update, (camera_mover, camera_rotator, debug_rotation));
     }
 }

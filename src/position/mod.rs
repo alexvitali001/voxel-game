@@ -1,5 +1,6 @@
 use crate::{chunk::chunk::CHUNK_SIZE_I32, player::ThisPlayer};
 use bevy::{math::f64::DVec3, prelude::*};
+use bevy_math::{CompassOctant, CompassQuadrant};
 #[derive(Default, Debug, Component)]
 pub struct WorldPosition {
     pub position: DVec3,
@@ -24,12 +25,12 @@ impl WorldPosition {
     }
 
     // returns a vec3 corresponding to the given direction, ignoring Y coord
-    pub fn backward(&self) -> DVec3 {
+    pub fn forward(&self) -> DVec3 {
         return DVec3::new(self.yaw.sin().into(), 0.0, self.yaw.cos().into());
     }
 
-    pub fn forward(&self) -> DVec3 {
-        return -self.backward();
+    pub fn backward(&self) -> DVec3 {
+        return -self.forward();
     }
 
     pub fn right(&self) -> DVec3 {
@@ -41,6 +42,20 @@ impl WorldPosition {
         return -self.right();
     }
 
+
+    // get bevy compass direction 
+    // NORTH +Z
+    // EAST  +X
+    // SOUTH -Z
+    // WEST  -X
+    pub fn get_compass_quadrant(&self) -> CompassQuadrant {
+        (Dir2::new(Vec2::new(self.forward().x as f32, self.forward().z as f32))).unwrap().into()
+    }
+
+    pub fn get_compass_octant(&self) -> CompassOctant {
+        (Dir2::new(Vec2::new(self.forward().x as f32, self.forward().z as f32))).unwrap().into()
+    }
+
     // set the given transform to match this WorldPosition, relative to origin
     // used in rendering to allow 64 bit floats to be used for physics
     pub fn to_render_transform(&self, origin: &Self, out: &mut Transform) {
@@ -49,8 +64,8 @@ impl WorldPosition {
         let z = (self.position.z - origin.position.z) as f32;
 
         out.translation = Vec3::new(x, y, z);
-        out.rotation = Quat::from_axis_angle(Vec3::Y, self.yaw)
-            * Quat::from_axis_angle(Vec3::NEG_X, self.pitch);
+        out.rotation = Quat::from_axis_angle(Vec3::NEG_Y, self.yaw) * 
+            Quat::from_axis_angle(Vec3::X, self.pitch);
     }
 
     pub fn from_xyz(x: f64, y: f64, z: f64) -> Self {

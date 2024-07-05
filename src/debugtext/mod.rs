@@ -38,19 +38,24 @@ pub fn display_debug_checkbox(
             
             let pitch = player_worldpos.pitch.to_degrees();
             let yaw = player_worldpos.yaw.to_degrees();
-            let forward = player_worldpos.forward();
-            let compass_direction = match (Dir2::new(Vec2::new(forward.x as f32, forward.z as f32))).unwrap().into() {
-                CompassOctant::North => "N",
-                CompassOctant::NorthEast => "NE",
-                CompassOctant::East => "E",
-                CompassOctant::SouthEast => "SE",
-                CompassOctant::South => "S",
-                CompassOctant::SouthWest => "SW",
-                CompassOctant::West => "W",
-                CompassOctant::NorthWest => "NW"
-            };
-            ui.label(format!("Rotation: Pitch {:.1}°, Yaw {:.1}° ({})", pitch, yaw, compass_direction));
+            ui.label(format!("Rotation: Pitch {:.1}°, Yaw {:.2}°", pitch, yaw));
             
+            let facing_direction = match player_worldpos.get_compass_octant() {
+                CompassOctant::North => "+Z (North)",
+                CompassOctant::NorthEast => "+X +Z (Northeast)",
+                CompassOctant::East => "+X (East)",
+                CompassOctant::SouthEast => "+X -Z (Southeast)",
+                CompassOctant::South => "-Z (South)",
+                CompassOctant::SouthWest => "-X -Z (Southwest)",
+                CompassOctant::West => "-X (West)",
+                CompassOctant::NorthWest => "-X +Z (Northwest)"
+            };
+
+            ui.label(format!("Facing: {}", facing_direction));
+
+            let forward = player_worldpos.forward();
+            ui.label(format!("Forward: {:.2} {:.2} {:.2}", forward.x, forward.y, forward.z));
+
             let player_chunk = player_worldpos.get_chunk_position();
             ui.label(format!("Current Chunk: X {} Y {} Z {}", player_chunk.x, player_chunk.y, player_chunk.z));
 
