@@ -31,6 +31,19 @@ pub struct GenerateChunkEvent(pub IVec3);
 #[derive(Component)]
 pub struct GenerateChunkTask(pub Task<()>);
 
+#[derive(Component)]
+pub struct MeshPosition(pub IVec3);
+
+impl MeshPosition {
+    pub fn to_render_transform(&self, origin: &WorldPosition, out: &mut Transform) {
+        // i hate casting
+        let x = (((self.0.x * CHUNK_SIZE_I32) as f64) - origin.position.x) as f32;
+        let y = (((self.0.y * CHUNK_SIZE_I32) as f64) - origin.position.y) as f32;
+        let z = (((self.0.z * CHUNK_SIZE_I32) as f64) - origin.position.z) as f32;
+        out.translation = Vec3::new(x, y, z);
+    }
+}
+
 fn on_generate_chunk(
     mut ev_gen : EventReader<GenerateChunkEvent>,
     mut commands : Commands,
@@ -138,11 +151,7 @@ fn finish_remeshing_tasks(
                             material: mat.clone(),
                             ..default()
                         })
-                        .insert(WorldPosition::from_xyz(
-                            (32 * pos.x) as f64,
-                            (32 * pos.y) as f64,
-                            (32 * pos.z) as f64,
-                        )).id();
+                        .insert((MeshPosition(*pos), Transform::from_xyz(0.0,0.0,0.0))).id();
                     mesh_list.0.push(e);
                 }
                 // update the mesh list
@@ -150,6 +159,7 @@ fn finish_remeshing_tasks(
             }
         })
 }
+
 #[derive(Event)]
 pub struct LoadChunkEvent(pub IVec3);
 
@@ -250,6 +260,18 @@ fn chunk_loading_manager(
     }
 }
 
+
+pub fn translate_all_mesh_transforms(
+    mut to_move: Query<(&mut Transform, &MeshPosition)>,
+    player: Query<&WorldPosition, With<ThisPlayer>>,
+) {
+    let player_world_position = player.single();
+
+    for (transform, mesh_position) in to_move.iter_mut() {
+        mesh_position.to_render_transform(player_world_position, transform.into_inner());
+    }
+}
+
 #[derive(Component)]
 pub struct ChunkEventsPlugin;
 
@@ -259,7 +281,8 @@ impl Plugin for ChunkEventsPlugin {
                 chunk_loading_manager,
                 (on_load_chunk, on_unload_chunk),
                 (finish_generating_tasks, on_generate_chunk).chain(),
-                (finish_remeshing_tasks,on_chunk_remesh).chain(), 
+                (finish_remeshing_tasks,on_chunk_remesh).chain(),
+                translate_all_mesh_transforms
                 ).chain())
            .add_event::<GenerateChunkEvent>()
            .add_event::<ChunkRemeshEvent>()

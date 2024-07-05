@@ -29,7 +29,7 @@ impl DimensionNoise {
         let continentalness_generator = Source::simplex(named_seed(useed, "continentalness"))
             .fbm(5, 0.013, 2.0, 0.5)
             .scale([SMOOTHNESS_FACTOR; 2]);
-        
+
         // uncomment these two lines to make an image of the noise
         // let path = "output.png";
         // Visualizer::<2>::new([1024, 1024], &continentalness_generator).write_to_file(path).unwrap();

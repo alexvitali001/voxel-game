@@ -1,5 +1,6 @@
 use crate::{chunk::chunk::CHUNK_SIZE_I32, player::ThisPlayer};
 use bevy::{math::f64::DVec3, prelude::*};
+use bevy_math::{CompassOctant, CompassQuadrant};
 #[derive(Default, Debug, Component)]
 pub struct WorldPosition {
     pub position: DVec3,
@@ -23,22 +24,53 @@ impl WorldPosition {
         self.pitch = (self.pitch + dpitch).clamp(-pi_halves, pi_halves);
     }
 
+
+    /*
+    Very clearly and expressly documenting What The Yaw Means. Beacuse I Spent Several Hours Futizng With Trigonometry
+    And Flashing What Look To The Untrained Eyes As Gang Symbols With My Right Hand And I Do Not Want To Think About
+    This Ever Again:
+
+    +------+----------+-----------+------------+
+    | Deg. | self.yaw | direction | forward is |
+    +------+----------+-----------+------------+
+    | 0°   |        0 |     NORTH | positive X |
+    +------+----------+-----------+------------+
+    | 90°  |      π/2 |      EAST | positive Z |
+    +------+----------+-----------+------------+
+    | 180° |        π |     SOUTH | negative X |
+    +------+----------+-----------+------------+
+    | 270° |     3π/2 |      WEST | negative Z |
+    +------+----------+-----------+------------+
+    */
+
     // returns a vec3 corresponding to the given direction, ignoring Y coord
-    pub fn backward(&self) -> DVec3 {
-        return DVec3::new(self.yaw.sin().into(), 0.0, self.yaw.cos().into());
+    pub fn forward(&self) -> DVec3 {
+        return DVec3::new(self.yaw.cos().into(), 0.0, self.yaw.sin().into());
     }
 
-    pub fn forward(&self) -> DVec3 {
-        return -self.backward();
+    pub fn backward(&self) -> DVec3 {
+        return -self.forward();
     }
 
     pub fn right(&self) -> DVec3 {
         let theta = self.yaw + std::f32::consts::FRAC_PI_2;
-        return DVec3::new(theta.sin().into(), 0.0, theta.cos().into());
+        return DVec3::new(theta.cos().into(), 0.0, theta.sin().into());
     }
 
     pub fn left(&self) -> DVec3 {
         return -self.right();
+    }
+
+
+    // get bevy compass direction 
+    // These are (z, x) instead of (x, z) to make the already existing bevy compass quadrant code spit out the right compass points
+    // is this confusing? we may want to just roll this ourselves?
+    pub fn get_compass_quadrant(&self) -> CompassQuadrant {
+        (Dir2::new(Vec2::new(self.forward().z as f32, self.forward().x as f32))).unwrap().into()
+    }
+
+    pub fn get_compass_octant(&self) -> CompassOctant {
+        (Dir2::new(Vec2::new(self.forward().z as f32, self.forward().x as f32))).unwrap().into()
     }
 
     // set the given transform to match this WorldPosition, relative to origin
@@ -49,8 +81,9 @@ impl WorldPosition {
         let z = (self.position.z - origin.position.z) as f32;
 
         out.translation = Vec3::new(x, y, z);
-        out.rotation = Quat::from_axis_angle(Vec3::Y, self.yaw)
-            * Quat::from_axis_angle(Vec3::NEG_X, self.pitch);
+        // axis is -Y instead of Y to get the rotation to not be backwards
+        out.rotation = Quat::from_axis_angle(Vec3::NEG_Y, self.yaw + std::f32::consts::FRAC_PI_2) * 
+            Quat::from_axis_angle(Vec3::X, self.pitch);
     }
 
     pub fn from_xyz(x: f64, y: f64, z: f64) -> Self {
