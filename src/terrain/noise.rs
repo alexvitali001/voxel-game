@@ -26,12 +26,9 @@ const DENSITY_SQUASH : f64 = 0.5;
 const HEIGHT_SCALE : f64 = 100.0;
 impl DimensionNoise {
     pub fn new(useed: u64) -> DimensionNoise {
-        let continentalness_generator = Source::custom(|p| {p[0] + p[1]});
-        /*
         let continentalness_generator = Source::simplex(named_seed(useed, "continentalness"))
             .fbm(5, 0.013, 2.0, 0.5)
             .scale([SMOOTHNESS_FACTOR; 2]);
-        */
 
         // uncomment these two lines to make an image of the noise
         // let path = "output.png";
@@ -70,7 +67,6 @@ impl DimensionNoise {
     }
 
     pub fn get_splined_cont(&self, x : i32, z: i32) -> f64 {
-        self.get_raw_cont(x, z)
-        // self.spline_cont.sample(self.get_raw_cont(x, z)).expect("Raw Continentalness outside [-1, 1]") * HEIGHT_SCALE
+        self.spline_cont.sample(self.get_raw_cont(x, z)).expect("Raw Continentalness outside [-1, 1]") * HEIGHT_SCALE
     }
 }

@@ -41,14 +41,14 @@ pub fn display_debug_checkbox(
             ui.label(format!("Rotation: Pitch {:.1}°, Yaw {:.2}°", pitch, yaw));
             
             let facing_direction = match player_worldpos.get_compass_octant() {
-                CompassOctant::North => "+Z (North)",
+                CompassOctant::North => "+X (North)",
                 CompassOctant::NorthEast => "+X +Z (Northeast)",
-                CompassOctant::East => "+X (East)",
-                CompassOctant::SouthEast => "+X -Z (Southeast)",
-                CompassOctant::South => "-Z (South)",
+                CompassOctant::East => "+Z (East)",
+                CompassOctant::SouthEast => "-X +Z (Southeast)",
+                CompassOctant::South => "-X (South)",
                 CompassOctant::SouthWest => "-X -Z (Southwest)",
-                CompassOctant::West => "-X (West)",
-                CompassOctant::NorthWest => "-X +Z (Northwest)"
+                CompassOctant::West => "-Z (West)",
+                CompassOctant::NorthWest => "+X -Z (Northwest)"
             };
 
             ui.label(format!("Facing: {}", facing_direction));
