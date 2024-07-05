@@ -2,75 +2,94 @@ use crate::player::ThisPlayer;
 use crate::position::WorldPosition;
 use crate::world::universe::Universe;
 use bevy::{
-    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
-    prelude::*,
+    diagnostic::{DiagnosticsStore, EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
+    prelude::*, render::diagnostic::RenderDiagnosticsPlugin
 };
-#[derive(Component)]
-struct DebugText;
+use bevy_egui::{egui, EguiContexts};
+use bevy_math::CompassOctant;
 
-fn setup_debug_text(mut commands: Commands) {
-    commands.spawn((
-        // Create a TextBundle that has a Text with a single section.
-        TextBundle::from_section(
-            "Position: ",
-            TextStyle {
-                font_size: 30.0,
-                color: Color::WHITE,
-                ..default()
-            },
-        ) // Set the alignment of the Text
-        .with_text_justify(JustifyText::Left)
-        // Set the style of the TextBundle itself.
-        .with_style(Style {
-            position_type: PositionType::Absolute,
-            top: Val::Px(5.0),
-            left: Val::Px(15.0),
-            ..default()
-        }),
-        DebugText,
-    ));
-}
-
-fn update_debug_text(
-    mut text_query: Query<&mut Text, With<DebugText>>,
-    player_query: Query<&WorldPosition, With<ThisPlayer>>,
+pub fn display_debug_checkbox(
+    mut egui: EguiContexts,
+    mut ds: ResMut<DebugInfo>,
     diagnostics: Res<DiagnosticsStore>,
+    player_query: Query<&WorldPosition, With<ThisPlayer>>,
     universe: Res<Universe>
 ) {
-    let mut text = text_query.single_mut();
+    egui::Window::new("Debug Info").show(egui.ctx_mut(), |ui| {
+        ui.checkbox(&mut ds.show_perf_info, "Show Performance Info");
+        ui.checkbox(&mut ds.show_game_info, "Show Game Info");
 
-    // Position Values
-    let player_worldpos = player_query.single();
-    let pos = player_worldpos.position;
-    let pitch = player_worldpos.pitch.to_degrees();
-    let yaw = player_worldpos.yaw.to_degrees();
-    let player_chunk = player_worldpos.get_chunk_position();
+        if ds.show_perf_info {
+            ui.heading("Performance Info");
+            ui.label(format!(
+                "FPS: {:.02}", diagnostics.get(&FrameTimeDiagnosticsPlugin::FPS).unwrap().smoothed().unwrap_or_default()
+            ));
+    
+            ui.label(format!(
+                "Entities: {:.0}", diagnostics.get(&EntityCountDiagnosticsPlugin::ENTITY_COUNT).unwrap().smoothed().unwrap_or_default()
+            ));
+        }
 
-    // Diagnostics
-    let fps = diagnostics
-        .get(&FrameTimeDiagnosticsPlugin::FPS)
-        .unwrap()
-        .smoothed()
-        .unwrap_or_default();
-    text.sections[0].value = format!(
-        "XYZ={:.5}, {:.5}, {:.5}
-            \nChunk={}, {}, {}
-            \nPitch={:.1}, Yaw={:.1}
-            \nFPS={:.1}
-            \nContinentalness={:.1}",
-        pos.x, pos.y, pos.z, 
-        player_chunk.x, player_chunk.y, player_chunk.z,
-        pitch, yaw, 
-        fps, 
-        universe.dimension_noise.get_splined_cont(pos.x as i32, pos.z as i32),
-    );
+        if ds.show_game_info {
+            ui.heading("Position Info");
+            let player_worldpos = player_query.single();
+            let pos = player_worldpos.position;
+            ui.label(format!("Position: X {:.2}, Y {:.2}, Z {:.2}", pos.x, pos.y, pos.z));
+            
+            let pitch = player_worldpos.pitch.to_degrees();
+            let yaw = player_worldpos.yaw.to_degrees();
+            let forward = player_worldpos.forward();
+            let compass_direction = match (Dir2::new(Vec2::new(forward.x as f32, forward.z as f32))).unwrap().into() {
+                CompassOctant::North => "N",
+                CompassOctant::NorthEast => "NE",
+                CompassOctant::East => "E",
+                CompassOctant::SouthEast => "SE",
+                CompassOctant::South => "S",
+                CompassOctant::SouthWest => "SW",
+                CompassOctant::West => "W",
+                CompassOctant::NorthWest => "NW"
+            };
+            ui.label(format!("Rotation: Pitch {:.1}°, Yaw {:.1}° ({})", pitch, yaw, compass_direction));
+            
+            let player_chunk = player_worldpos.get_chunk_position();
+            ui.label(format!("Current Chunk: X {} Y {} Z {}", player_chunk.x, player_chunk.y, player_chunk.z));
+
+            ui.heading("Biome Info");
+            let cont = universe.dimension_noise.get_splined_cont(pos.x as i32, pos.z as i32);
+            ui.label(format!("Continentalness: {:.1}", cont));
+        }
+    });
 }
+
+pub fn toggle_debug_info(keys: Res<ButtonInput<KeyCode>>, mut ui_state: ResMut<DebugInfo>) {
+    for key in keys.get_just_pressed() {
+        if key == &KeyCode::F3 {
+            ui_state.show_all_info = !ui_state.show_all_info;
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct DebugInfo {
+    pub show_all_info : bool,
+    pub show_perf_info : bool,
+    pub show_game_info : bool,
+}
+
+const DEFAULT_DEBUG_STATE : DebugInfo = DebugInfo {
+    show_all_info: true, 
+    show_perf_info: true,
+    show_game_info: true,
+};
 
 pub struct DebugTextPlugin;
 impl Plugin for DebugTextPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(FrameTimeDiagnosticsPlugin)
-            .add_systems(Startup, setup_debug_text)
-            .add_systems(Update, update_debug_text);
+        app.add_plugins((FrameTimeDiagnosticsPlugin, EntityCountDiagnosticsPlugin, RenderDiagnosticsPlugin))
+            .insert_resource(DEFAULT_DEBUG_STATE)
+            .add_systems(Update, toggle_debug_info)
+            .add_systems(Update, (
+                display_debug_checkbox, // runs only if the master checkbox is toggled
+            ).run_if(|ds : Res<DebugInfo> | {ds.show_all_info}));
     }
 }

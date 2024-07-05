@@ -21,19 +21,18 @@ use bevy::{
         },
         render_asset::RenderAssetUsages,
     },
-    color::palettes::basic::SILVER,
     color::palettes::css::ALICE_BLUE
 };
+use bevy_egui::EguiPlugin;
 use world::universe::Universe;
 use world::block_materials::BlockMaterials;
 use world::block::*;
-use world::gen::{ChunkEventsPlugin, GenerateChunkEvent, ChunkRemeshEvent};
+use world::gen::ChunkEventsPlugin;
 
 use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 
 use position::*;
-use crate::world::gen::{ChunkMeshList, ChunkPosition};
 
 fn main() {
     let image_plugin = ImagePlugin {
@@ -50,6 +49,7 @@ fn main() {
             level: Level::INFO, ..default()
         }))
         .add_plugins((PlayerPlugin, DebugTextPlugin, ChunkEventsPlugin))
+        .add_plugins(EguiPlugin)
         .insert_resource(BlockMaterials::new())
         .insert_resource(Universe::new())
         .add_systems(Startup, set_window_title)
