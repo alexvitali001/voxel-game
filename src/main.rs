@@ -4,6 +4,7 @@ mod position;
 mod world;
 mod chunk;
 mod terrain;
+mod settings;
 
 use bevy::log::{Level, LogPlugin};
 use bevy::window::PrimaryWindow;
@@ -31,6 +32,7 @@ use world::gen::ChunkEventsPlugin;
 
 use crate::debugtext::DebugTextPlugin;
 use crate::player::PlayerPlugin;
+use crate::settings::DEFAULT_SETTINGS;
 
 use position::*;
 
@@ -52,6 +54,7 @@ fn main() {
         .add_plugins(EguiPlugin)
         .insert_resource(BlockMaterials::new())
         .insert_resource(Universe::new())
+        .insert_resource(DEFAULT_SETTINGS)
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
         .add_systems(PostUpdate, translate_all_world_transforms)

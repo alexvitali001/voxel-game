@@ -6,6 +6,7 @@ use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
 use crate::chunk::chunk::CHUNK_SIZE_I32;
 use crate::chunk::mesh::bake;
+use crate::settings::Settings;
 use crate::WorldPosition;
 use zerocopy::FromBytes;
 use super::universe::Universe;
@@ -207,20 +208,22 @@ fn on_unload_chunk(
     }
 }
 
-const HORIZONTAL_RENDER_DISTANCE : i32 = 8;
-const VERTICAL_RENDER_DISTANCE : i32 = 8;
 use crate::player::*;
 use std::collections::HashSet;
 use std::cmp::max;
 fn chunk_loading_manager(
     mut ev_load : EventWriter<LoadChunkEvent>,
     mut ev_unload : EventWriter<UnloadChunkEvent>,
+    settings : Res<Settings>,
     player_query: Query<&mut WorldPosition, With<ThisPlayer>>,
     chunk_query: Query<(Entity, &ChunkPosition, Option<&ChunkRemeshTask>, Option<&GenerateChunkTask>)>
                 // we query the tasks so we can not avoid unloading chunks that have tasks on them
                 // because unloading chunks that are being generated/meshed seems Like A Bad Idea
 ) {
     let player_chunk = player_query.single().get_chunk_position();
+
+    let horiz_rd = settings.horizontal_render_distance as i32;
+    let vertical_rd = settings.vertical_render_distance as i32;
 
     let mut already_loaded : HashSet<IVec3> = HashSet::new();
 
@@ -229,13 +232,13 @@ fn chunk_loading_manager(
         if rt.is_some() || gt.is_some() {
             // chunks with tasks are always considered "in bounds", so they aren't unloaded or loaded again
             already_loaded.insert(pos.0); 
-        } else if (pos.0.y - player_chunk.y).abs() > VERTICAL_RENDER_DISTANCE {
+        } else if (pos.0.y - player_chunk.y).abs() > vertical_rd {
             info!("Unloading chunk {},{},{} (outside vertical render distance)", pos.0[0], pos.0[1], pos.0[2]);
             ev_unload.send(UnloadChunkEvent(e));
         } else if max( // using chebyshev distance for now
                 (pos.0.x - player_chunk.x).abs(), 
                 (pos.0.z - player_chunk.z).abs()
-            ) > HORIZONTAL_RENDER_DISTANCE { 
+            ) > horiz_rd { 
                 info!("Unloading chunk {},{},{} (outside horizontal render distance)", pos.0[0], pos.0[1], pos.0[2]);
                 ev_unload.send(UnloadChunkEvent(e));
         } else {
@@ -247,9 +250,9 @@ fn chunk_loading_manager(
 
     // check if new chunks need to be loaded
     // stupid dumb algorithm for doing this, in the future we want this to be a spiral to ensure the chunk you're in always goes into the task pool first
-    for dx in -HORIZONTAL_RENDER_DISTANCE..=HORIZONTAL_RENDER_DISTANCE {
-        for dz in -HORIZONTAL_RENDER_DISTANCE..=HORIZONTAL_RENDER_DISTANCE {
-            for dy in -VERTICAL_RENDER_DISTANCE..=VERTICAL_RENDER_DISTANCE {
+    for dx in -horiz_rd..=horiz_rd {
+        for dz in -horiz_rd..=horiz_rd {
+            for dy in -vertical_rd..=vertical_rd {
                 let coords = IVec3::new(dx,dy,dz) + player_chunk;
                 if !already_loaded.contains(&coords) {
                     info!("Loading chunk {},{},{}", coords.x, coords.y, coords.z);

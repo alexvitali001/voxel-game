@@ -66,6 +66,12 @@ pub fn display_debug_checkbox(
     });
 }
 
+fn render_chunk_borders(
+    mut gizmos: Gizmos
+) {
+    
+}
+
 pub fn toggle_debug_info(keys: Res<ButtonInput<KeyCode>>, mut ui_state: ResMut<DebugInfo>) {
     for key in keys.get_just_pressed() {
         if key == &KeyCode::F3 {
@@ -79,12 +85,14 @@ pub struct DebugInfo {
     pub show_all_info : bool,
     pub show_perf_info : bool,
     pub show_game_info : bool,
+    pub draw_chunk_borders: bool
 }
 
 const DEFAULT_DEBUG_STATE : DebugInfo = DebugInfo {
     show_all_info: true, 
     show_perf_info: true,
     show_game_info: true,
+    draw_chunk_borders: false
 };
 
 pub struct DebugTextPlugin;

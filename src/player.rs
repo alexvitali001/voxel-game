@@ -1,4 +1,5 @@
 use crate::position::WorldPosition;
+use crate::settings::Settings;
 use bevy::input::mouse::MouseMotion;
 use bevy::math::f64::DVec3;
 use bevy::prelude::*;
@@ -95,6 +96,7 @@ fn camera_rotator(
     mut camera_query: Query<(&ThisPlayer, &mut WorldPosition)>,
     mut mouse_motion_event_reader: EventReader<MouseMotion>,
     mut window_query: Query<&mut Window>,
+    settings: Res<Settings>
 ) {
     let (_, mut worldpos) = camera_query.single_mut();
     let window = window_query.single_mut();
@@ -107,26 +109,11 @@ fn camera_rotator(
     if mouse_vec == Vec2::ZERO {
         return;
     }
-    let mouse_sensitivity = 0.005;
 
-    worldpos.add_pitch_clamp(-mouse_vec.y * mouse_sensitivity);
-    worldpos.add_yaw(mouse_vec.x * mouse_sensitivity);
+    worldpos.add_pitch_clamp(-mouse_vec.y * settings.mouse_sensitivity);
+    worldpos.add_yaw(mouse_vec.x * settings.mouse_sensitivity);
 }
 
-fn debug_rotation(
-    keys: Res<ButtonInput<KeyCode>>,
-    mut camera_query: Query<(&ThisPlayer, &mut WorldPosition)>
-) {
-    let (_, mut worldpos) = camera_query.single_mut();
-
-    if keys.just_pressed(KeyCode::Digit0) {
-        worldpos.yaw = 0.0;
-    } else if keys.just_pressed(KeyCode::Minus) {
-        worldpos.add_yaw(-std::f32::consts::FRAC_PI_2);
-    } else if keys.just_pressed(KeyCode::Equal) {
-        worldpos.add_yaw(std::f32::consts::FRAC_PI_2);
-    }
-}
 
 #[derive(Component)]
 pub struct PlayerPlugin;
@@ -134,6 +121,6 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init_this_player)
-            .add_systems(Update, (camera_mover, camera_rotator, debug_rotation));
+            .add_systems(Update, (camera_mover, camera_rotator));
     }
 }
