@@ -1,4 +1,5 @@
-use crate::player::ThisPlayer;
+use crate::chunk::chunk::{CHUNK_SIZE, CHUNK_SIZE_I32};
+use crate::{player::ThisPlayer, settings::Settings};
 use crate::position::WorldPosition;
 use crate::world::universe::Universe;
 use bevy::{
@@ -18,6 +19,7 @@ pub fn display_debug_checkbox(
     egui::Window::new("Debug Info").show(egui.ctx_mut(), |ui| {
         ui.checkbox(&mut ds.show_perf_info, "Show Performance Info");
         ui.checkbox(&mut ds.show_game_info, "Show Game Info");
+        ui.checkbox(&mut ds.draw_chunk_borders, "Draw Chunk Borders");
 
         if ds.show_perf_info {
             ui.heading("Performance Info");
@@ -53,9 +55,6 @@ pub fn display_debug_checkbox(
 
             ui.label(format!("Facing: {}", facing_direction));
 
-            let forward = player_worldpos.forward();
-            ui.label(format!("Forward: {:.2} {:.2} {:.2}", forward.x, forward.y, forward.z));
-
             let player_chunk = player_worldpos.get_chunk_position();
             ui.label(format!("Current Chunk: X {} Y {} Z {}", player_chunk.x, player_chunk.y, player_chunk.z));
 
@@ -67,9 +66,53 @@ pub fn display_debug_checkbox(
 }
 
 fn render_chunk_borders(
-    mut gizmos: Gizmos
+    mut gizmos: Gizmos,
+    settings: Res<Settings>,
+    player_query: Query<&WorldPosition, With<ThisPlayer>>
 ) {
-    
+    let player_worldpos = player_query.single();
+
+    let chunk_corner = -player_worldpos.get_within_chunk_position();
+    gizmos.grid_3d(
+        chunk_corner,
+        Quat::IDENTITY,
+        UVec3::from_array([2 * settings.horizontal_render_distance as u32, 2 * settings.vertical_render_distance as u32, 2 * settings.horizontal_render_distance as u32]), 
+        Vec3::from_array([CHUNK_SIZE as f32, CHUNK_SIZE as f32, CHUNK_SIZE as f32]),
+        bevy::color::palettes::css::GREEN
+    ).outer_edges();
+
+
+    // the "draw 2d grid in 3d" gizmo had weirdness with the quats so
+    // i just rolled my own
+    let positions = vec![
+        (Vec3::X, Vec3::Z, Vec3::Y), // top bottom 
+        (Vec3::X, Vec3::Y, Vec3::Z), // east west
+        (Vec3::Z, Vec3::Y, Vec3::X)  // north south
+    ];
+    let full = CHUNK_SIZE_I32 as f32;
+    let spacing = 2;
+    positions.iter().for_each(|(v1, v2, shift)| {
+        for i in 1..=CHUNK_SIZE/spacing {
+            for j in 1..=CHUNK_SIZE/spacing {
+                for k in [Vec3::ZERO, *shift * full] {
+                    let d1 = (((i*spacing) as f32) * *v1);
+                    let d2 = (((j*spacing) as f32) * *v2);
+                    let origin = chunk_corner + k;
+                    gizmos.line(
+                        origin + d1,
+                        origin + d1 + d2,
+                        bevy::color::palettes::css::RED
+                    );
+
+                    gizmos.line(
+                        origin + d2,
+                        origin + d2 + d1,
+                        bevy::color::palettes::css::RED
+                    )
+                }
+            }
+        }
+    })
 }
 
 pub fn toggle_debug_info(keys: Res<ButtonInput<KeyCode>>, mut ui_state: ResMut<DebugInfo>) {
@@ -103,6 +146,7 @@ impl Plugin for DebugTextPlugin {
             .add_systems(Update, toggle_debug_info)
             .add_systems(Update, (
                 display_debug_checkbox, // runs only if the master checkbox is toggled
+                render_chunk_borders.run_if(|ds : Res<DebugInfo> | {ds.draw_chunk_borders})
             ).run_if(|ds : Res<DebugInfo> | {ds.show_all_info}));
     }
 }

@@ -102,6 +102,24 @@ impl WorldPosition {
             (self.position.z / chunk_size).floor() as i32
         )
     }
+
+    pub fn get_within_chunk_position(&self) -> Vec3 {
+        let chunk_size = CHUNK_SIZE_I32 as f64;
+        
+        let m = |n : f64| {
+            let mut k = n % chunk_size;
+            if k < 0.0 {
+                k += chunk_size;
+            }
+            k as f32
+        };
+
+        return Vec3::new(
+            m(self.position.x),
+            m(self.position.y),
+            m(self.position.z),
+        )        
+    }
 }
 
 // shift any entity with both a Transform and a WorldPosition to be relative to the player

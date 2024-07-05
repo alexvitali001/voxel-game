@@ -1,4 +1,4 @@
-mod debugtext;
+mod debug;
 mod player;
 mod position;
 mod world;
@@ -30,7 +30,7 @@ use world::block_materials::BlockMaterials;
 use world::block::*;
 use world::gen::ChunkEventsPlugin;
 
-use crate::debugtext::DebugTextPlugin;
+use crate::debug::DebugTextPlugin;
 use crate::player::PlayerPlugin;
 use crate::settings::DEFAULT_SETTINGS;
 
