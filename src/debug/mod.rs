@@ -55,6 +55,13 @@ pub fn display_debug_checkbox(
 
             ui.label(format!("Facing: {}", facing_direction));
 
+            let fwv = player_worldpos.forward();
+            ui.label(format!("Forward Vector: X {:.2}, Y {:.2}, Z {:.2}", fwv.x, fwv.y, fwv.z));
+
+            let fcv = player_worldpos.facing_direction();
+            ui.label(format!("Facing Vector: X {:.2}, Y {:.2}, Z {:.2}", fcv.x, fcv.y, fcv.z));
+
+
             let player_chunk = player_worldpos.get_chunk_position();
             ui.label(format!("Current Chunk: X {} Y {} Z {}", player_chunk.x, player_chunk.y, player_chunk.z));
 

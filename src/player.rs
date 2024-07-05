@@ -110,8 +110,8 @@ fn camera_rotator(
         return;
     }
 
-    worldpos.add_pitch_clamp(-mouse_vec.y * settings.mouse_sensitivity);
-    worldpos.add_yaw(mouse_vec.x * settings.mouse_sensitivity);
+    worldpos.add_pitch_clamp((-mouse_vec.y * settings.mouse_sensitivity) as f64);
+    worldpos.add_yaw((mouse_vec.x * settings.mouse_sensitivity) as f64);
 }
 
 

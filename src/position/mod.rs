@@ -1,26 +1,26 @@
 use crate::{chunk::chunk::CHUNK_SIZE_I32, player::ThisPlayer};
 use bevy::{math::f64::DVec3, prelude::*};
-use bevy_math::{CompassOctant, CompassQuadrant};
+use bevy_math::{CompassOctant, CompassQuadrant, DQuat};
 #[derive(Default, Debug, Component)]
 pub struct WorldPosition {
     pub position: DVec3,
-    pub pitch: f32,
-    pub yaw: f32,
+    pub pitch: f64,
+    pub yaw: f64,
 }
 
 impl WorldPosition {
     // add some value to the yaw, modulo 2*pi if necessary
-    pub fn add_yaw(&mut self, dyaw: f32) {
+    pub fn add_yaw(&mut self, dyaw: f64) {
         self.yaw += dyaw;
-        self.yaw %= std::f32::consts::TAU;
+        self.yaw %= std::f64::consts::TAU;
         if self.yaw < 0.0 {
-            self.yaw += std::f32::consts::TAU;
+            self.yaw += std::f64::consts::TAU;
         }
     }
 
     // add some value to the pitch (clamping to keep within plus/minus pi/2)
-    pub fn add_pitch_clamp(&mut self, dpitch: f32) {
-        let pi_halves = std::f32::consts::FRAC_PI_2;
+    pub fn add_pitch_clamp(&mut self, dpitch: f64) {
+        let pi_halves = std::f64::consts::FRAC_PI_2;
         self.pitch = (self.pitch + dpitch).clamp(-pi_halves, pi_halves);
     }
 
@@ -45,7 +45,7 @@ impl WorldPosition {
 
     // returns a vec3 corresponding to the given direction, ignoring Y coord
     pub fn forward(&self) -> DVec3 {
-        return DVec3::new(self.yaw.cos().into(), 0.0, self.yaw.sin().into());
+        return DVec3::new(self.yaw.cos(), 0.0, self.yaw.sin());
     }
 
     pub fn backward(&self) -> DVec3 {
@@ -53,14 +53,22 @@ impl WorldPosition {
     }
 
     pub fn right(&self) -> DVec3 {
-        let theta = self.yaw + std::f32::consts::FRAC_PI_2;
-        return DVec3::new(theta.cos().into(), 0.0, theta.sin().into());
+        let theta = self.yaw + std::f64::consts::FRAC_PI_2;
+        return DVec3::new(theta.cos(), 0.0, theta.sin());
     }
 
     pub fn left(&self) -> DVec3 {
         return -self.right();
     }
 
+    fn rotating_quaternion(&self) -> DQuat {
+        DQuat::from_axis_angle(DVec3::NEG_Y, self.yaw as f64 + std::f64::consts::FRAC_PI_2) * 
+        DQuat::from_axis_angle(DVec3::X, self.pitch as f64)
+    }
+
+    pub fn facing_direction(&self) -> DVec3 {
+        self.rotating_quaternion().mul_vec3(DVec3::NEG_Z)
+    }
 
     // get bevy compass direction 
     // These are (z, x) instead of (x, z) to make the already existing bevy compass quadrant code spit out the right compass points
@@ -82,8 +90,7 @@ impl WorldPosition {
 
         out.translation = Vec3::new(x, y, z);
         // axis is -Y instead of Y to get the rotation to not be backwards
-        out.rotation = Quat::from_axis_angle(Vec3::NEG_Y, self.yaw + std::f32::consts::FRAC_PI_2) * 
-            Quat::from_axis_angle(Vec3::X, self.pitch);
+        out.rotation = self.rotating_quaternion().as_quat(); // cast to f32 quat
     }
 
     pub fn from_xyz(x: f64, y: f64, z: f64) -> Self {
