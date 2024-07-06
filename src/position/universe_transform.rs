@@ -1,7 +1,6 @@
 use bevy::{math::f64::DVec3, prelude::*};
 use bevy_math::{CompassOctant, CompassQuadrant, DQuat};
 use super::universe_location::*;
-use std::ops::{Add, Sub};
 
 #[derive(Default, Debug, Component, Clone)]
 pub struct UniverseTransform {
