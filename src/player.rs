@@ -1,4 +1,3 @@
-use crate::position::*;
 use crate::settings::Settings;
 use crate::universe_transform::UniverseTransform;
 use bevy::input::mouse::MouseMotion;

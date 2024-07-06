@@ -1,4 +1,3 @@
-use bevy_math::Vec2;
 use libnoise::*;
 use super::libnoise_gens::*;
 use splines::{Interpolation, Key, Spline};

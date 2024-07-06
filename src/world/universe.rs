@@ -2,7 +2,6 @@
 
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
-use crate::chunk::chunk::AIR;
 use crate::terrain::noise::DimensionNoise;
 use crate::world::block::BlockData;
 use crate::world::block::BlockType;
