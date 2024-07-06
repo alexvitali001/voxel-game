@@ -9,7 +9,7 @@ use bevy::{
 use bevy_egui::{egui, EguiContexts};
 use bevy_math::CompassOctant;
 
-pub fn display_debug_checkbox(
+pub fn display_debug_menu(
     mut egui: EguiContexts,
     mut ds: ResMut<DebugInfo>,
     diagnostics: Res<DiagnosticsStore>,
@@ -156,7 +156,7 @@ impl Plugin for DebugTextPlugin {
             .insert_resource(DEFAULT_DEBUG_STATE)
             .add_systems(Update, toggle_debug_info)
             .add_systems(Update, (
-                display_debug_checkbox, // runs only if the master checkbox is toggled
+                display_debug_menu, // runs only if the master checkbox is toggled
                 render_chunk_borders.run_if(|ds : Res<DebugInfo> | {ds.draw_chunk_borders})
             ).run_if(|ds : Res<DebugInfo> | {ds.show_all_info}));
     }
