@@ -1,14 +1,16 @@
-use crate::{chunk::chunk::CHUNK_SIZE_I32, player::ThisPlayer};
 use bevy::{math::f64::DVec3, prelude::*};
 use bevy_math::{CompassOctant, CompassQuadrant, DQuat};
-#[derive(Default, Debug, Component)]
-pub struct WorldPosition {
-    pub position: DVec3,
+use super::universe_location::*;
+use std::ops::{Add, Sub};
+
+#[derive(Default, Debug, Component, Clone)]
+pub struct UniverseTransform {
+    pub loc: UniverseLocation,
     pub pitch: f64,
     pub yaw: f64,
 }
 
-impl WorldPosition {
+impl UniverseTransform {
     // add some value to the yaw, modulo 2*pi if necessary
     pub fn add_yaw(&mut self, dyaw: f64) {
         self.yaw += dyaw;
@@ -61,11 +63,15 @@ impl WorldPosition {
         return -self.right();
     }
 
+
+    // gets the quaternion that corresponds to this UniverseTransform's rotation
+    // required a lot of stupid trial and error and magic vectors.
     fn rotating_quaternion(&self) -> DQuat {
         DQuat::from_axis_angle(DVec3::NEG_Y, self.yaw as f64 + std::f64::consts::FRAC_PI_2) * 
         DQuat::from_axis_angle(DVec3::X, self.pitch as f64)
     }
 
+    // returns the vector pointing in the direction that this UniverseTransform is facing
     pub fn facing_direction(&self) -> DVec3 {
         self.rotating_quaternion().mul_vec3(DVec3::NEG_Z)
     }
@@ -84,59 +90,28 @@ impl WorldPosition {
     // set the given transform to match this WorldPosition, relative to origin
     // used in rendering to allow 64 bit floats to be used for physics
     pub fn to_render_transform(&self, origin: &Self, out: &mut Transform) {
-        let x = (self.position.x - origin.position.x) as f32;
-        let y = (self.position.y - origin.position.y) as f32;
-        let z = (self.position.z - origin.position.z) as f32;
+        let x = (self.loc.position.x - origin.loc.position.x) as f32;
+        let y = (self.loc.position.y - origin.loc.position.y) as f32;
+        let z = (self.loc.position.z - origin.loc.position.z) as f32;
 
         out.translation = Vec3::new(x, y, z);
         // axis is -Y instead of Y to get the rotation to not be backwards
         out.rotation = self.rotating_quaternion().as_quat(); // cast to f32 quat
     }
 
-    pub fn from_xyz(x: f64, y: f64, z: f64) -> Self {
+    pub fn from_dim_xyz<T>(dimension: u32, position: T) -> Self
+        where T: Into<DVec3> {
         return Self {
-            position: DVec3::new(x, y, z),
+            loc: UniverseLocation::from_dim_xyz(dimension, position),
             ..default()
         };
     }
 
     pub fn get_chunk_position(&self) -> IVec3 {
-        // society when integer division rounds towards zero and not down and i have to do this
-        let chunk_size = CHUNK_SIZE_I32 as f64;
-        return IVec3::new(
-            (self.position.x / chunk_size).floor() as i32,
-            (self.position.y / chunk_size).floor() as i32,
-            (self.position.z / chunk_size).floor() as i32
-        )
+        self.loc.get_chunk_position()
     }
 
     pub fn get_within_chunk_position(&self) -> Vec3 {
-        let chunk_size = CHUNK_SIZE_I32 as f64;
-        
-        let m = |n : f64| {
-            let mut k = n % chunk_size;
-            if k < 0.0 {
-                k += chunk_size;
-            }
-            k as f32
-        };
-
-        return Vec3::new(
-            m(self.position.x),
-            m(self.position.y),
-            m(self.position.z),
-        )        
-    }
-}
-
-// shift any entity with both a Transform and a WorldPosition to be relative to the player
-pub fn translate_all_world_transforms(
-    mut to_move: Query<(&mut Transform, &WorldPosition)>,
-    player: Query<&WorldPosition, With<ThisPlayer>>,
-) {
-    let player_world_position = player.single();
-
-    for (transform, world_position) in to_move.iter_mut() {
-        world_position.to_render_transform(player_world_position, transform.into_inner());
+        self.loc.get_within_chunk_position()      
     }
 }

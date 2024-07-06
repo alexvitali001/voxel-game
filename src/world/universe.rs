@@ -2,9 +2,11 @@
 
 use crate::chunk::chunk::BlockId;
 use crate::chunk::chunk::Chunk;
+use crate::chunk::chunk::AIR;
 use crate::terrain::noise::DimensionNoise;
 use crate::world::block::BlockData;
 use crate::world::block::BlockType;
+use crate::position::universe_location::UniverseLocation;
 use bevy::prelude::*;
 
 use parking_lot::RwLock;
@@ -164,6 +166,20 @@ impl Universe {
                 .clone()
     }
 
+    // gets the block at a given position
+    // If chunk is nonexistent, return None
+    pub fn block_at(&self, pos : UniverseLocation) -> Option<BlockId> {
+        let cp = pos.get_chunk_position(); 
+        let bp = pos.get_within_chunk_position().floor();
+
+        match self.fetch_chunk(&cp) {
+            None => None,
+            Some(c) => {
+                let chunk = Chunk::ref_from(c.as_ref()).unwrap();
+                Some(chunk.get(bp.x as u32, bp.y as u32, bp.z as u32))
+            }
+        }
+    }
 }
 
 impl Default for Universe {

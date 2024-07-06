@@ -1,6 +1,6 @@
 use crate::chunk::chunk::{CHUNK_SIZE, CHUNK_SIZE_I32};
 use crate::{player::ThisPlayer, settings::Settings};
-use crate::position::WorldPosition;
+use crate::position::universe_transform::UniverseTransform;
 use crate::world::universe::Universe;
 use bevy::{
     diagnostic::{DiagnosticsStore, EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
@@ -13,7 +13,7 @@ pub fn display_debug_checkbox(
     mut egui: EguiContexts,
     mut ds: ResMut<DebugInfo>,
     diagnostics: Res<DiagnosticsStore>,
-    player_query: Query<&WorldPosition, With<ThisPlayer>>,
+    player_query: Query<&UniverseTransform, With<ThisPlayer>>,
     universe: Res<Universe>
 ) {
     egui::Window::new("Debug Info").show(egui.ctx_mut(), |ui| {
@@ -33,16 +33,20 @@ pub fn display_debug_checkbox(
         }
 
         if ds.show_game_info {
-            ui.heading("Position Info");
-            let player_worldpos = player_query.single();
-            let pos = player_worldpos.position;
+            ui.heading("Player Info");
+            let player_utrans = player_query.single();
+
+            let dim = player_utrans.loc.dimension;
+            ui.label(format!("Dimension: {}", dim));
+
+            let pos = player_utrans.loc.position;
             ui.label(format!("Position: X {:.2}, Y {:.2}, Z {:.2}", pos.x, pos.y, pos.z));
             
-            let pitch = player_worldpos.pitch.to_degrees();
-            let yaw = player_worldpos.yaw.to_degrees();
+            let pitch = player_utrans.pitch.to_degrees();
+            let yaw = player_utrans.yaw.to_degrees();
             ui.label(format!("Rotation: Pitch {:.1}°, Yaw {:.2}°", pitch, yaw));
             
-            let facing_direction = match player_worldpos.get_compass_octant() {
+            let facing_direction = match player_utrans.get_compass_octant() {
                 CompassOctant::North => "+X (North)",
                 CompassOctant::NorthEast => "+X +Z (Northeast)",
                 CompassOctant::East => "+Z (East)",
@@ -55,14 +59,14 @@ pub fn display_debug_checkbox(
 
             ui.label(format!("Facing: {}", facing_direction));
 
-            let fwv = player_worldpos.forward();
+            let fwv = player_utrans.forward();
             ui.label(format!("Forward Vector: X {:.2}, Y {:.2}, Z {:.2}", fwv.x, fwv.y, fwv.z));
 
-            let fcv = player_worldpos.facing_direction();
+            let fcv = player_utrans.facing_direction();
             ui.label(format!("Facing Vector: X {:.2}, Y {:.2}, Z {:.2}", fcv.x, fcv.y, fcv.z));
 
 
-            let player_chunk = player_worldpos.get_chunk_position();
+            let player_chunk = player_utrans.get_chunk_position();
             ui.label(format!("Current Chunk: X {} Y {} Z {}", player_chunk.x, player_chunk.y, player_chunk.z));
 
             ui.heading("Biome Info");
@@ -75,11 +79,11 @@ pub fn display_debug_checkbox(
 fn render_chunk_borders(
     mut gizmos: Gizmos,
     settings: Res<Settings>,
-    player_query: Query<&WorldPosition, With<ThisPlayer>>
+    player_query: Query<&UniverseTransform, With<ThisPlayer>>
 ) {
-    let player_worldpos = player_query.single();
+    let player_utrans = player_query.single();
 
-    let chunk_corner = -player_worldpos.get_within_chunk_position();
+    let chunk_corner = -player_utrans.get_within_chunk_position();
     gizmos.grid_3d(
         chunk_corner,
         Quat::IDENTITY,

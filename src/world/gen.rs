@@ -7,7 +7,7 @@ use crate::chunk::chunk::Chunk;
 use crate::chunk::chunk::CHUNK_SIZE_I32;
 use crate::chunk::mesh::bake;
 use crate::settings::Settings;
-use crate::WorldPosition;
+use crate::position::universe_transform::UniverseTransform;
 use zerocopy::FromBytes;
 use super::universe::Universe;
 use super::block_materials::BlockMaterials;
@@ -36,11 +36,11 @@ pub struct GenerateChunkTask(pub Task<()>);
 pub struct MeshPosition(pub IVec3);
 
 impl MeshPosition {
-    pub fn to_render_transform(&self, origin: &WorldPosition, out: &mut Transform) {
+    pub fn to_render_transform(&self, origin: &UniverseTransform, out: &mut Transform) {
         // i hate casting
-        let x = (((self.0.x * CHUNK_SIZE_I32) as f64) - origin.position.x) as f32;
-        let y = (((self.0.y * CHUNK_SIZE_I32) as f64) - origin.position.y) as f32;
-        let z = (((self.0.z * CHUNK_SIZE_I32) as f64) - origin.position.z) as f32;
+        let x = (((self.0.x * CHUNK_SIZE_I32) as f64) - origin.loc.position.x) as f32;
+        let y = (((self.0.y * CHUNK_SIZE_I32) as f64) - origin.loc.position.y) as f32;
+        let z = (((self.0.z * CHUNK_SIZE_I32) as f64) - origin.loc.position.z) as f32;
         out.translation = Vec3::new(x, y, z);
     }
 }
@@ -215,7 +215,7 @@ fn chunk_loading_manager(
     mut ev_load : EventWriter<LoadChunkEvent>,
     mut ev_unload : EventWriter<UnloadChunkEvent>,
     settings : Res<Settings>,
-    player_query: Query<&mut WorldPosition, With<ThisPlayer>>,
+    player_query: Query<&mut UniverseTransform, With<ThisPlayer>>,
     chunk_query: Query<(Entity, &ChunkPosition, Option<&ChunkRemeshTask>, Option<&GenerateChunkTask>)>
                 // we query the tasks so we can not avoid unloading chunks that have tasks on them
                 // because unloading chunks that are being generated/meshed seems Like A Bad Idea
@@ -266,7 +266,7 @@ fn chunk_loading_manager(
 
 pub fn translate_all_mesh_transforms(
     mut to_move: Query<(&mut Transform, &MeshPosition)>,
-    player: Query<&WorldPosition, With<ThisPlayer>>,
+    player: Query<&UniverseTransform, With<ThisPlayer>>,
 ) {
     let player_world_position = player.single();
 

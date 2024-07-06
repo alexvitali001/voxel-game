@@ -1,5 +1,6 @@
-use crate::position::WorldPosition;
+use crate::position::*;
 use crate::settings::Settings;
+use crate::universe_transform::UniverseTransform;
 use bevy::input::mouse::MouseMotion;
 use bevy::math::f64::DVec3;
 use bevy::prelude::*;
@@ -15,7 +16,7 @@ pub struct ThisPlayer;
 #[derive(Default, Bundle)]
 pub struct PlayerBundle {
     _p: Player,
-    world_position: WorldPosition,
+    world_position: UniverseTransform,
 }
 
 fn init_this_player(mut commands: Commands) {
@@ -24,7 +25,7 @@ fn init_this_player(mut commands: Commands) {
         ..default()
     };
 
-    let mut world_position = WorldPosition::from_xyz(0.0, 100.0, 12.0);
+    let mut world_position = UniverseTransform::from_dim_xyz(0, (0.0, 100.0, 12.0));
     world_position.pitch = 1.57;
     let player_bundle = PlayerBundle {
         _p: Player,
@@ -41,7 +42,7 @@ fn init_this_player(mut commands: Commands) {
 fn camera_mover(
     keys: Res<ButtonInput<KeyCode>>,
     mouse: Res<ButtonInput<MouseButton>>,
-    mut query: Query<&mut WorldPosition, With<ThisPlayer>>,
+    mut query: Query<&mut UniverseTransform, With<ThisPlayer>>,
     mut window_query: Query<&mut Window>,
 ) {
     // handle mouse locking
@@ -89,11 +90,11 @@ fn camera_mover(
         0.1
     };
 
-    worldpos.position += speed * direction.normalize();
+    *worldpos += speed * direction.normalize();
 }
 
 fn camera_rotator(
-    mut camera_query: Query<(&ThisPlayer, &mut WorldPosition)>,
+    mut camera_query: Query<(&ThisPlayer, &mut UniverseTransform)>,
     mut mouse_motion_event_reader: EventReader<MouseMotion>,
     mut window_query: Query<&mut Window>,
     settings: Res<Settings>
@@ -114,6 +115,17 @@ fn camera_rotator(
     worldpos.add_yaw((mouse_vec.x * settings.mouse_sensitivity) as f64);
 }
 
+// shift any entity with both a Transform and a UniverseTransform to be relative to the player
+pub fn translate_all_world_transforms(
+    mut to_move: Query<(&mut Transform, &UniverseTransform)>,
+    player: Query<&UniverseTransform, With<ThisPlayer>>,
+) {
+    let player_world_position = player.single();
+
+    for (transform, world_position) in to_move.iter_mut() {
+        world_position.to_render_transform(player_world_position, transform.into_inner());
+    }
+}
 
 #[derive(Component)]
 pub struct PlayerPlugin;
@@ -121,6 +133,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init_this_player)
-            .add_systems(Update, (camera_mover, camera_rotator));
+            .add_systems(Update, (camera_mover, camera_rotator))
+            .add_systems(PostUpdate, translate_all_world_transforms);
     }
 }

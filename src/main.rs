@@ -29,6 +29,7 @@ use world::universe::Universe;
 use world::block_materials::BlockMaterials;
 use world::block::*;
 use world::gen::ChunkEventsPlugin;
+use position::universe_transform::UniverseTransform;
 
 use crate::debug::DebugTextPlugin;
 use crate::player::PlayerPlugin;
@@ -57,7 +58,6 @@ fn main() {
         .insert_resource(DEFAULT_SETTINGS)
         .add_systems(Startup, set_window_title)
         .add_systems(Startup, (build_block_registry, setup).chain())
-        .add_systems(PostUpdate, translate_all_world_transforms)
         .run();
 }
 
@@ -110,7 +110,7 @@ fn setup(
             material: debug_material.clone(),
             ..default()
         },))
-        .insert(WorldPosition::from_xyz(0.0, 40.0, 0.0));
+        .insert(UniverseTransform::from_dim_xyz(0, (0.0, 40.0, 0.0)));
 
     ambient_light.color = ALICE_BLUE.into();
     ambient_light.brightness = 640.0;
@@ -125,7 +125,7 @@ fn setup(
             },
             ..default()
         })
-        .insert(WorldPosition::from_xyz(8.0, 50.0, 8.0));
+        .insert(UniverseTransform::from_dim_xyz(0, (8.0, 50.0, 8.0)));
 }
 
 #[allow(dead_code)]
