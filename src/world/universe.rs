@@ -105,7 +105,6 @@ impl Universe {
             let val = dim.get(key)
                 .expect("Sled DB encountered error")
                 .expect("Chunk should be generated if not already present before this");
-            // println!("penis wenis dick and balls");
             Some(val)
         }
     }
