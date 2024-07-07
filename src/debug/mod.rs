@@ -6,8 +6,10 @@ use bevy::{
     diagnostic::{DiagnosticsStore, EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
     prelude::*, render::diagnostic::RenderDiagnosticsPlugin
 };
+use bevy_egui::egui::text::LayoutJob;
+use bevy_egui::egui::{Color32, TextFormat};
 use bevy_egui::{egui, EguiContexts};
-use bevy_math::CompassOctant;
+use bevy_math::{CompassOctant, DVec3};
 
 pub fn display_debug_menu(
     mut egui: EguiContexts,
@@ -20,6 +22,7 @@ pub fn display_debug_menu(
         ui.checkbox(&mut ds.show_perf_info, "Show Performance Info");
         ui.checkbox(&mut ds.show_game_info, "Show Game Info");
         ui.checkbox(&mut ds.draw_chunk_borders, "Draw Chunk Borders");
+        ui.checkbox(&mut ds.draw_viewed_blocks, "Draw Blocks in Line of Sight");
 
         if ds.show_perf_info {
             ui.heading("Performance Info");
@@ -60,11 +63,10 @@ pub fn display_debug_menu(
             ui.label(format!("Facing: {}", facing_direction));
 
             let fwv = player_utrans.forward();
-            ui.label(format!("Forward Vector: X {:.2}, Y {:.2}, Z {:.2}", fwv.x, fwv.y, fwv.z));
+            ui.label(format!("Forward Vector: X {:.2}, Z {:.2}", fwv.x, fwv.z));
 
             let fcv = player_utrans.facing_direction();
             ui.label(format!("Facing Vector: X {:.2}, Y {:.2}, Z {:.2}", fcv.x, fcv.y, fcv.z));
-
 
             let player_chunk = player_utrans.get_chunk_position();
             ui.label(format!("Current Chunk: X {} Y {} Z {}", player_chunk.x, player_chunk.y, player_chunk.z));
@@ -126,6 +128,47 @@ fn render_chunk_borders(
     })
 }
 
+pub fn draw_int_raycast(
+    mut gizmos: Gizmos,
+    mut egui: EguiContexts,
+    player: Query<&UniverseTransform, With<ThisPlayer>>
+    
+) {
+    let player_trans = player.single();
+    let rc = player_trans.integer_raycast(5.0);
+    
+    for block_loc in rc.clone() {
+        gizmos.cuboid(
+            Transform::from_translation((block_loc.position - player_trans.loc.position + (0.5 * DVec3::ONE)).as_vec3()), 
+            bevy::color::palettes::css::BLUE
+        );
+    }
+
+    let num = rc.len();
+    let mut prev = rc[0].position;
+    egui::Window::new("Raycasted Blocks").show(egui.ctx_mut(), |ui| {
+        ui.heading(format!("{} Blocks Hit", num));
+        for b in rc {
+            let delta = b.position - prev;
+            let mut job = LayoutJob::default();
+            for i in [0,1,2] {
+                job.append(
+                    &format!("{:.0} ", b.position[i]),
+                    0.0,
+                    TextFormat {
+                        color: if delta[i] > 0.0 {Color32::GREEN} else if delta[i] < 0.0 {Color32::RED} else {Color32::WHITE}, 
+                        ..default()
+                    }
+                )
+            }
+            ui.label(job);
+            prev = b.position;
+        }
+    });
+
+
+}
+
 pub fn toggle_debug_info(keys: Res<ButtonInput<KeyCode>>, mut ui_state: ResMut<DebugInfo>) {
     for key in keys.get_just_pressed() {
         if key == &KeyCode::F3 {
@@ -139,14 +182,16 @@ pub struct DebugInfo {
     pub show_all_info : bool,
     pub show_perf_info : bool,
     pub show_game_info : bool,
-    pub draw_chunk_borders: bool
+    pub draw_chunk_borders: bool, 
+    pub draw_viewed_blocks: bool,
 }
 
 const DEFAULT_DEBUG_STATE : DebugInfo = DebugInfo {
     show_all_info: true, 
     show_perf_info: true,
     show_game_info: true,
-    draw_chunk_borders: false
+    draw_chunk_borders: false,
+    draw_viewed_blocks: false
 };
 
 pub struct DebugTextPlugin;
@@ -157,7 +202,8 @@ impl Plugin for DebugTextPlugin {
             .add_systems(Update, toggle_debug_info)
             .add_systems(Update, (
                 display_debug_menu, // runs only if the master checkbox is toggled
-                render_chunk_borders.run_if(|ds : Res<DebugInfo> | {ds.draw_chunk_borders})
+                render_chunk_borders.run_if(|ds : Res<DebugInfo> | {ds.draw_chunk_borders}),
+                draw_int_raycast.run_if(|ds : Res<DebugInfo> | {ds.draw_viewed_blocks})
             ).run_if(|ds : Res<DebugInfo> | {ds.show_all_info}));
     }
 }

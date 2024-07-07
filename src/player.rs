@@ -55,8 +55,19 @@ fn camera_mover(
         window.cursor.grab_mode = CursorGrabMode::None;
     }
 
+
     // handle direction
     let mut worldpos = query.single_mut();
+
+    if keys.pressed(KeyCode::KeyQ) {
+        worldpos.pitch = 0.0;
+    }
+    if keys.pressed(KeyCode::KeyR) {
+        worldpos.yaw = 0.0;
+    }
+    if keys.pressed(KeyCode::KeyF) {
+        worldpos.loc.position = worldpos.loc.position.floor();
+    }
 
     let mut direction = DVec3::ZERO;
 
@@ -93,12 +104,12 @@ fn camera_mover(
 }
 
 fn camera_rotator(
-    mut camera_query: Query<(&ThisPlayer, &mut UniverseTransform)>,
+    mut camera_query: Query<&mut UniverseTransform, With<ThisPlayer>>,
     mut mouse_motion_event_reader: EventReader<MouseMotion>,
     mut window_query: Query<&mut Window>,
     settings: Res<Settings>
 ) {
-    let (_, mut worldpos) = camera_query.single_mut();
+    let mut worldpos = camera_query.single_mut();
     let window = window_query.single_mut();
     if window.cursor.grab_mode == CursorGrabMode::None {
         return;
@@ -126,12 +137,30 @@ pub fn translate_all_world_transforms(
     }
 }
 
+pub fn spawn_reticle(
+    asset_server: Res<AssetServer>,
+    mut commands : Commands
+) {
+    commands.spawn(
+        ImageBundle {
+        image: UiImage::new(asset_server.load("textures/ui/reticle.png")),
+        style: Style {
+            position_type: PositionType::Relative,
+            align_self: AlignSelf::Center, 
+            justify_self: JustifySelf::Center,
+            ..default()
+        },
+        ..default()}
+    );
+}
+
 #[derive(Component)]
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, init_this_player)
+            .add_systems(Startup, spawn_reticle)
             .add_systems(Update, (camera_mover, camera_rotator))
             .add_systems(PostUpdate, translate_all_world_transforms);
     }

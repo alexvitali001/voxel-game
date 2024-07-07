@@ -45,4 +45,11 @@ impl UniverseLocation {
             m(self.position.z),
         )        
     }
+
+    pub fn position_in_same_dimension(&self, new_position: DVec3) -> UniverseLocation {
+        UniverseLocation {
+            dimension: self.dimension,
+            position: new_position
+        }
+    }
 }
