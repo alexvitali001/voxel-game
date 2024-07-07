@@ -28,7 +28,7 @@ use bevy_egui::EguiPlugin;
 use world::universe::Universe;
 use world::block_materials::BlockMaterials;
 use world::block::*;
-use world::gen::ChunkEventsPlugin;
+use world::loading::ChunkEventsPlugin;
 use position::universe_transform::UniverseTransform;
 
 use crate::debug::DebugTextPlugin;
