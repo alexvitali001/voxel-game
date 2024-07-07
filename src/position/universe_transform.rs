@@ -1,6 +1,5 @@
 use bevy::{math::f64::DVec3, prelude::*};
 use bevy_math::{CompassOctant, CompassQuadrant, DQuat};
-use crate::world::universe::Universe;
 
 use super::universe_location::*;
 

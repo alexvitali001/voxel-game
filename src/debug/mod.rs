@@ -109,8 +109,8 @@ fn render_chunk_borders(
         for i in 1..=CHUNK_SIZE/spacing {
             for j in 1..=CHUNK_SIZE/spacing {
                 for k in [Vec3::ZERO, *shift * full] {
-                    let d1 = (((i*spacing) as f32) * *v1);
-                    let d2 = (((j*spacing) as f32) * *v2);
+                    let d1 = ((i*spacing) as f32) * *v1;
+                    let d2 = ((j*spacing) as f32) * *v2;
                     let origin = chunk_corner + k;
                     gizmos.line(
                         origin + d1,
