@@ -58,17 +58,6 @@ fn camera_mover(
 
     // handle direction
     let mut worldpos = query.single_mut();
-
-    if keys.pressed(KeyCode::KeyQ) {
-        worldpos.pitch = 0.0;
-    }
-    if keys.pressed(KeyCode::KeyR) {
-        worldpos.yaw = 0.0;
-    }
-    if keys.pressed(KeyCode::KeyF) {
-        worldpos.loc.position = worldpos.loc.position.floor();
-    }
-
     let mut direction = DVec3::ZERO;
 
     if keys.pressed(KeyCode::KeyW) {

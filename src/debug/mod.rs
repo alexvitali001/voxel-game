@@ -23,6 +23,7 @@ pub fn display_debug_menu(
         ui.checkbox(&mut ds.show_game_info, "Show Game Info");
         ui.checkbox(&mut ds.draw_chunk_borders, "Draw Chunk Borders");
         ui.checkbox(&mut ds.draw_viewed_blocks, "Draw Blocks in Line of Sight");
+        ui.checkbox(&mut ds.enable_debug_keyinds, "Enable Debug Keybinds");
 
         if ds.show_perf_info {
             ui.heading("Performance Info");
@@ -169,11 +170,43 @@ pub fn draw_int_raycast(
 
 }
 
-pub fn toggle_debug_info(keys: Res<ButtonInput<KeyCode>>, mut ui_state: ResMut<DebugInfo>) {
-    for key in keys.get_just_pressed() {
-        if key == &KeyCode::F3 {
-            ui_state.show_all_info = !ui_state.show_all_info;
+pub fn debug_keybinds(
+    mut egui: EguiContexts,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut player_query: Query<&mut UniverseTransform, With<ThisPlayer>>,
+) {
+    let mut worldpos = player_query.single_mut();
+    if keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight) {
+        if keys.just_pressed(KeyCode::KeyQ) {
+            worldpos.pitch = 0.0;
         }
+        if keys.just_pressed(KeyCode::KeyX) {
+            worldpos.yaw = 0.0;
+        }
+        if keys.just_pressed(KeyCode::KeyZ) {
+            worldpos.add_yaw(-std::f64::consts::FRAC_PI_2)
+        }
+        if keys.just_pressed(KeyCode::KeyC) {
+            worldpos.add_yaw(std::f64::consts::FRAC_PI_2)
+        }
+        if keys.just_pressed(KeyCode::KeyF) {
+            worldpos.loc.position = worldpos.loc.position.floor();
+        }
+    }
+
+    egui::Window::new("Debug Keybindings").show(egui.ctx_mut(), |ui| {
+        ui.heading("Position Controls");
+        ui.label("Ctrl+Q: Look straight ahead");
+        ui.label("Ctrl+X: Set yaw to 0°");
+        ui.label("Ctrl+Z: Rotate 90° CCW");
+        ui.label("Ctrl+C: Rotate 90° CW");
+        ui.label("Ctrl+F: Round position to nearest integer");
+    });
+}
+
+pub fn toggle_debug_info(keys: Res<ButtonInput<KeyCode>>, mut ui_state: ResMut<DebugInfo>) {
+    if keys.just_pressed(KeyCode::F3) {
+            ui_state.show_all_info = !ui_state.show_all_info;
     }
 }
 
@@ -184,6 +217,7 @@ pub struct DebugInfo {
     pub show_game_info : bool,
     pub draw_chunk_borders: bool, 
     pub draw_viewed_blocks: bool,
+    pub enable_debug_keyinds: bool
 }
 
 const DEFAULT_DEBUG_STATE : DebugInfo = DebugInfo {
@@ -191,7 +225,8 @@ const DEFAULT_DEBUG_STATE : DebugInfo = DebugInfo {
     show_perf_info: true,
     show_game_info: true,
     draw_chunk_borders: false,
-    draw_viewed_blocks: false
+    draw_viewed_blocks: false, 
+    enable_debug_keyinds: false
 };
 
 pub struct DebugTextPlugin;
@@ -203,7 +238,8 @@ impl Plugin for DebugTextPlugin {
             .add_systems(Update, (
                 display_debug_menu, // runs only if the master checkbox is toggled
                 render_chunk_borders.run_if(|ds : Res<DebugInfo> | {ds.draw_chunk_borders}),
-                draw_int_raycast.run_if(|ds : Res<DebugInfo> | {ds.draw_viewed_blocks})
+                draw_int_raycast.run_if(|ds : Res<DebugInfo> | {ds.draw_viewed_blocks}),
+                debug_keybinds.run_if(|ds : Res<DebugInfo> | {ds.enable_debug_keyinds})
             ).run_if(|ds : Res<DebugInfo> | {ds.show_all_info}));
     }
 }
