@@ -1,4 +1,5 @@
 use crate::chunk::chunk::{CHUNK_SIZE, CHUNK_SIZE_I32};
+use crate::player::PLAYER_REACH;
 use crate::{player::ThisPlayer, settings::Settings};
 use crate::position::universe_transform::UniverseTransform;
 use crate::world::universe::Universe;
@@ -136,7 +137,7 @@ pub fn draw_int_raycast(
     
 ) {
     let player_trans = player.single();
-    let rc = player_trans.integer_raycast(5.0);
+    let rc = player_trans.integer_raycast(PLAYER_REACH);
     
     for block_loc in rc.clone() {
         gizmos.cuboid(

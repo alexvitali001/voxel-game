@@ -35,6 +35,9 @@ pub struct GenerateChunkTask(pub Task<()>);
 #[derive(Component)]
 pub struct MeshPosition(pub IVec3);
 
+#[derive(Resource)]
+pub struct ChunkEntityMap(HashMap<IVec3, Entity>);
+
 impl MeshPosition {
     pub fn to_render_transform(&self, origin: &UniverseTransform, out: &mut Transform) {
         // i hate casting
@@ -71,7 +74,8 @@ fn on_generate_chunk(
 fn finish_generating_tasks(
     mut chunk_query: Query<(Entity, &ChunkPosition, &mut GenerateChunkTask)>,
     mut commands: Commands,
-    mut ev_remesh: EventWriter<ChunkRemeshEvent>
+    mut ev_remesh: EventWriter<ChunkRemeshEvent>,
+    mut chunk_entity_map: ResMut<ChunkEntityMap>
 ) {
     chunk_query.iter_mut()
         .for_each(|(entity, ChunkPosition(pos), task)| {
@@ -81,15 +85,17 @@ fn finish_generating_tasks(
                     .remove::<GenerateChunkTask>()
                     .id();
 
+            // register with hash map
+            chunk_entity_map.0.insert(*pos, ce);
             // fire remesh event
-            ev_remesh.send(ChunkRemeshEvent(*pos, ce));
+            ev_remesh.send(ChunkRemeshEvent(*pos));
             
         }
     });
 }
 
 #[derive(Event)]
-pub struct ChunkRemeshEvent(pub IVec3, pub Entity);
+pub struct ChunkRemeshEvent(pub IVec3);
 
 
 #[derive(Component)]
@@ -99,11 +105,13 @@ pub struct ChunkRemeshTask(Task<HashMap<BlockId, Mesh>>);
 fn on_chunk_remesh(
     mut ev_remesh : EventReader<ChunkRemeshEvent>,
     mut commands : Commands,
-    universe: Res<Universe>
+    universe: Res<Universe>,
+    chunk_entity_map: ResMut<ChunkEntityMap>
 ) {
     let task_pool = AsyncComputeTaskPool::get();
 
-    for ChunkRemeshEvent(pos, e) in ev_remesh.read() {
+    for ChunkRemeshEvent(pos) in ev_remesh.read() {
+        let e = chunk_entity_map.0.get(pos).unwrap();
         let u = (*universe.as_ref()).clone();
         let c = u.fetch_chunk_exists(pos);
         //let p = pos.clone();
@@ -169,6 +177,7 @@ fn on_load_chunk(
     mut ev_remesh: EventWriter<ChunkRemeshEvent>,
     mut ev_gen: EventWriter<GenerateChunkEvent>,
     mut commands : Commands,
+    mut chunk_entity_map: ResMut<ChunkEntityMap>,
     universe: Res<Universe>
 ) {
     for ev in ev_load.read() {
@@ -179,7 +188,8 @@ fn on_load_chunk(
                 ChunkPosition(coords),
                 ChunkMeshList(vec![])
             )).id();
-            ev_remesh.send(ChunkRemeshEvent(coords, e));
+            chunk_entity_map.0.insert(coords, e);
+            ev_remesh.send(ChunkRemeshEvent(coords));
         } else {
             // if not, send a generate event
             ev_gen.send(GenerateChunkEvent(coords));
@@ -188,18 +198,19 @@ fn on_load_chunk(
 }
 
 #[derive(Event)]
-pub struct UnloadChunkEvent(pub Entity);
+pub struct UnloadChunkEvent(pub IVec3);
 
 fn on_unload_chunk(
     mut ev_unload : EventReader<UnloadChunkEvent>,
     mut commands : Commands,
+    mut chunk_entity_map : ResMut<ChunkEntityMap>,
     mesh_list_q:  Query<&ChunkMeshList>
 ) {
     for ev in ev_unload.read() { 
         // TODO: We should probably use bevy's builtin parent-child relationship here to child the meshes to the "Loaded Chunk" entity
         // that would probably make this less cumbersome. and a lot of the shit in this file really.
 
-        let e = ev.0;
+        let e = chunk_entity_map.0.remove(&ev.0).unwrap();
         for m in &mesh_list_q.get(e).unwrap().0 {
             // delete all the meshes
             commands.entity(*m).despawn();
@@ -216,7 +227,7 @@ fn chunk_loading_manager(
     mut ev_unload : EventWriter<UnloadChunkEvent>,
     settings : Res<Settings>,
     player_query: Query<&mut UniverseTransform, With<ThisPlayer>>,
-    chunk_query: Query<(Entity, &ChunkPosition, Option<&ChunkRemeshTask>, Option<&GenerateChunkTask>)>
+    chunk_query: Query<(&ChunkPosition, Option<&ChunkRemeshTask>, Option<&GenerateChunkTask>)>
                 // we query the tasks so we can not avoid unloading chunks that have tasks on them
                 // because unloading chunks that are being generated/meshed seems Like A Bad Idea
 ) {
@@ -228,19 +239,19 @@ fn chunk_loading_manager(
     let mut already_loaded : HashSet<IVec3> = HashSet::new();
 
     // unload chunks that are too far away in any direction
-    for (e, pos, rt, gt) in &chunk_query {
+    for (pos, rt, gt) in &chunk_query {
         if rt.is_some() || gt.is_some() {
             // chunks with tasks are always considered "in bounds", so they aren't unloaded or loaded again
             already_loaded.insert(pos.0); 
         } else if (pos.0.y - player_chunk.y).abs() > vertical_rd {
             info!("Unloading chunk {},{},{} (outside vertical render distance)", pos.0[0], pos.0[1], pos.0[2]);
-            ev_unload.send(UnloadChunkEvent(e));
+            ev_unload.send(UnloadChunkEvent(pos.0));
         } else if max( // using chebyshev distance for now
                 (pos.0.x - player_chunk.x).abs(), 
                 (pos.0.z - player_chunk.z).abs()
             ) > horiz_rd { 
                 info!("Unloading chunk {},{},{} (outside horizontal render distance)", pos.0[0], pos.0[1], pos.0[2]);
-                ev_unload.send(UnloadChunkEvent(e));
+                ev_unload.send(UnloadChunkEvent(pos.0));
         } else {
             // maintain a list of already loaded in-bound chunks so as not to reload them
             // info!("Sparing chunk {},{},{}", pos.0[0], pos.0[1], pos.0[2]);
@@ -280,7 +291,8 @@ pub struct ChunkEventsPlugin;
 
 impl Plugin for ChunkEventsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, (
+        app.insert_resource(ChunkEntityMap(HashMap::new()))
+           .add_systems(Update, (
                 chunk_loading_manager,
                 (on_load_chunk, on_unload_chunk),
                 (finish_generating_tasks, on_generate_chunk).chain(),

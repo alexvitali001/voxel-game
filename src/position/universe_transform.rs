@@ -215,51 +215,5 @@ impl UniverseTransform {
 
         }
         hits
-
-        /* 
-        // previous implementation
-
-        let nx = if signs.x > 0.0 {start.position.x.ceil()} else {start.position.x.floor()};
-        let ny = if signs.y > 0.0 {start.position.y.ceil()} else {start.position.y.floor()};
-        let nz = if signs.z > 0.0 {start.position.z.ceil()} else {start.position.z.floor()};
-
-        let mut int_points = DVec3::new(nx, ny, nz);
-
-        // nearest point with integer coordinate 
-        let epsilon = 1e-7; 
-        let inf_signs = std::f64::INFINITY * signs;
-        let px = if slope.x.abs() < epsilon {inf_signs} else {(nx - start.position.x) * slope / slope.x + start.position};
-        let py = if slope.y.abs() < epsilon {inf_signs} else {(ny - start.position.y) * slope / slope.y + start.position};
-        let pz = if slope.z.abs() < epsilon {inf_signs} else {(nz - start.position.z) * slope / slope.z + start.position};
-
-        let mut nearest_points = [px, py, pz];
-
-        loop {
-            let dists = DVec3::from_array(nearest_points.map(|p| signs.x * (p.x - start.position.x)));
-
-            // which axis' plane intersects the line first?
-            let nearest_ind = {
-                let min_elem = dists.min_element();
-                if dists.x == min_elem {0}
-                else if dists.y == min_elem {1}
-                else {2}
-            };
-
-            let mut nearest_point = nearest_points[nearest_ind].floor();
-            if signs[nearest_ind] < 1.0 {
-                // we hit the top/right/etc edge of the block and need to drop by 1;
-                nearest_point[nearest_ind] -= 1.0;
-            }
-
-            hits.push(start.position_in_same_dimension(nearest_point)); // should be a yield later
-
-            int_points[nearest_ind] += signs[nearest_ind];
-            nearest_points[nearest_ind] = (int_points[nearest_ind] - start.position[nearest_ind]) * slope / slope[nearest_ind] + start.position;
-
-            if dists.min_element().abs() >= (end.position.x - start.position.x).abs() {
-                break;
-            }
-        }
-        */
     }
 }
