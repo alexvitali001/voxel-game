@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::chunk::chunk::{BlockId, Chunk, AIR};
 use crate::settings::Settings;
 use crate::universe_transform::UniverseTransform;
@@ -9,6 +11,8 @@ use bevy::prelude::*;
 use bevy::render::view::{GpuCulling, NoCpuCulling};
 use bevy::window::CursorGrabMode;
 use zerocopy::FromBytes;
+use itertools::Itertools;
+
 
 #[derive(Default, Component)]
 pub struct Player;
@@ -134,35 +138,23 @@ fn block_handler(
 ) {
     let worldpos = player.single();
     
-    // i hate the way this code looks.
-    let (target_block, adjacent_block, target_block_id) = {
-        let mut current = None; 
-        let mut prev = None;
-        let mut id = None;
-
-        for position in worldpos.integer_raycast(PLAYER_REACH) {
-            prev = current;
-            current = Some(position);
-            match universe.block_at(position) {
-                None => { 
-                    current = None;
-                    prev = None;
-                    id = None;  
-                    break;
-                } 
-                Some(AIR) => {} // hit an air block, keep going
-                Some(e) => { 
-                    id = Some(e);
-                    break;
-                }
+    let mut target_block = None;
+    let mut adjacent_block = None;
+    let mut target_id = None;
+    for (prev, current) in iter::once(None).chain(
+        worldpos.integer_raycast(PLAYER_REACH).into_iter().map(|s| Some(s))
+    ).tuple_windows() {
+        match universe.block_at(current.expect("Values after the first guaranteed to be Some")) {
+            None => {break;} // hit an unloaded chunk, fail immediately
+            Some(AIR) => {} // hit an air block, keep going
+            Some(e) => { // hit a solid, record it and exit the raycast loop
+                target_block = current;
+                adjacent_block = prev;
+                target_id = Some(e);
+                break;
             }
         }
-
-        match id {
-            None => {(None, None, None)}
-            Some(_) => {(current, prev, id)}
-        }
-    };
+    }
 
     if let Some(p) = target_block {
         gizmos.cuboid(
@@ -171,7 +163,7 @@ fn block_handler(
         );
 
         if mouse.just_pressed(MouseButton::Left) {
-            info!("Broke block at {} {} {} (ID {})", p.position.x, p.position.y, p.position.z, target_block_id.unwrap().0);
+            info!("Broke block at {} {} {} (ID {})", p.position.x, p.position.y, p.position.z, target_id.unwrap().0);
 
             let chunk_pos = &p.get_chunk_position();
             let c = universe.fetch_chunk_exists(chunk_pos);
